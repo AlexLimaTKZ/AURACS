@@ -1,0 +1,12 @@
+
+{
+  "name": "auracs-monorepo",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently \"dotnet run --project api\" \"npm run dev --prefix web\"",
+    "install:web": "npm install --prefix web"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

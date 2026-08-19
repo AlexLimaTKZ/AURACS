@@ -115,6 +115,16 @@ export function useGameEngine() {
       setCurrentStep(step);
       setStep(step.id);
 
+      // Passos puramente narrativos representam consequências já escolhidas no passo anterior.
+      // Seus efeitos precisam ser aplicados ao entrar no passo, antes da progressão automática.
+      if (!step.requiredCode && !step.choices) {
+        if (step.achievementId) unlockAchievement(step.achievementId);
+        if (step.onSuccess) {
+          step.onSuccess({ updateEnergy });
+          flash("amber");
+        }
+      }
+
       step.narrative.forEach((line, index) => {
         scheduler.schedule(() => {
           const isCode = line.includes("=") && line.includes(";") && !line.startsWith("Sua Tarefa");
@@ -151,7 +161,7 @@ export function useGameEngine() {
         moveAutomatically();
       }
     },
-    [addLog, scheduler, setStep, speak]
+    [addLog, flash, scheduler, setStep, speak, unlockAchievement, updateEnergy]
   );
 
   const resetRemoteSession = useCallback(async () => {

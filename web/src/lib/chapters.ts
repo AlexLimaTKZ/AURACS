@@ -1,14 +1,15 @@
+export interface ChapterSuccessContext {
+  updateEnergy: (amount: number) => void;
+}
 
 export interface ChapterStep {
   id: string;
   narrative: string[];
   auraMessage?: string;
   requiredCode?: string;
-  onSuccess?: (state: any) => void;
+  onSuccess?: (state: ChapterSuccessContext) => void;
   nextStepId?: string;
-  // Branching: multiple choices
   choices?: { label: string; nextStepId: string }[];
-  // Achievement to unlock on completion
   achievementId?: string;
 }
 
@@ -18,7 +19,6 @@ export interface Chapter {
   steps: Record<string, ChapterStep>;
   initialStepId: string;
 }
-
 
 export const CHAPTER_1: Chapter = {
   id: "chapter-1",
@@ -68,17 +68,15 @@ export const CHAPTER_1: Chapter = {
       id: "step-4",
       narrative: [
         "25% é muito perigoso. Precisamos tomar uma decisão.",
-        "Podemos desviar a energia auxiliar para os Escudos (1) ou para o Suporte de Vida (2).",
+        "Podemos desviar a energia auxiliar para os Escudos (1) ou para o Suporte de Vida (2)."
       ],
       auraMessage: "Esta é uma decisão crítica. Cada escolha tem consequências. Digite 1 para reforçar os Escudos ou 2 para priorizar o Suporte de Vida.",
-      // Branching! Player types 1 or 2
       choices: [
         { label: "1 — Escudos", nextStepId: "step-4-shields" },
-        { label: "2 — Suporte de Vida", nextStepId: "step-4-life" },
+        { label: "2 — Suporte de Vida", nextStepId: "step-4-life" }
       ],
-      requiredCode: "int escolha",
+      requiredCode: "int escolha"
     },
-    // --- BRANCH A: Escudos ---
     "step-4-shields": {
       id: "step-4-shields",
       narrative: [
@@ -90,7 +88,6 @@ export const CHAPTER_1: Chapter = {
       onSuccess: (state) => state.updateEnergy(10),
       nextStepId: "step-5"
     },
-    // --- BRANCH B: Suporte de Vida ---
     "step-4-life": {
       id: "step-4-life",
       narrative: [
@@ -102,7 +99,6 @@ export const CHAPTER_1: Chapter = {
       onSuccess: (state) => state.updateEnergy(5),
       nextStepId: "step-5"
     },
-    // --- Convergência ---
     "step-5": {
       id: "step-5",
       narrative: [
@@ -122,13 +118,11 @@ export const CHAPTER_1: Chapter = {
         "Por enquanto, vocês estão seguros..."
       ],
       auraMessage: "Excelente trabalho, Kael. Você salvou a nave por hoje. Mas a jornada está apenas começando. Descanse... e prepare-se para o próximo capítulo.",
-      achievementId: "chapter_1_complete",
+      achievementId: "chapter_1_complete"
     }
   }
 };
 
-// --- AURA Error Suggestions ---
-// Maps common C# errors to friendly suggestions
 interface ErrorHint {
   pattern: string;
   suggestion: string;
@@ -137,48 +131,48 @@ interface ErrorHint {
 const ERROR_HINTS: ErrorHint[] = [
   {
     pattern: "ponto-e-vírgula",
-    suggestion: "Você esqueceu o ponto-e-vírgula (;) no final da linha. Em C#, toda instrução termina com ;",
+    suggestion: "Você esqueceu o ponto-e-vírgula (;) no final da linha. Em C#, toda instrução termina com ;"
   },
   {
     pattern: "; esperado",
-    suggestion: "Faltou um ponto-e-vírgula (;). Adicione ; no final do comando.",
+    suggestion: "Faltou um ponto-e-vírgula (;). Adicione ; no final do comando."
   },
   {
     pattern: "não existe no contexto atual",
-    suggestion: "Essa variável não foi declarada ainda. Certifique-se de declarar a variável antes de usá-la, por exemplo: int nomeDaVariavel = valor;",
+    suggestion: "Essa variável não foi declarada ainda. Certifique-se de declarar a variável antes de usá-la, por exemplo: int nomeDaVariavel = valor;"
   },
   {
     pattern: "não pode converter implicitamente",
-    suggestion: "Os tipos não são compatíveis. Verifique se você está usando o tipo correto (int, string, bool, etc.).",
+    suggestion: "Os tipos não são compatíveis. Verifique se você está usando o tipo correto (int, string, bool, etc.)."
   },
   {
     pattern: "Número excessivo de caracteres no literal de caractere",
-    suggestion: "Você usou aspas simples (') em vez de aspas duplas (\"). Em C#, textos usam aspas duplas: \"texto\"",
+    suggestion: "Você usou aspas simples (') em vez de aspas duplas (\"). Em C#, textos usam aspas duplas: \"texto\""
   },
   {
     pattern: "Erro de sintaxe",
-    suggestion: "Há um erro na estrutura do código. Verifique se os parênteses (), chaves {} e aspas estão corretos.",
+    suggestion: "Há um erro na estrutura do código. Verifique se os parênteses (), chaves {} e aspas estão corretos."
   },
   {
     pattern: "\"(\" esperado",
-    suggestion: "Parece que faltou um parêntese de abertura (. Verifique a sintaxe do comando.",
+    suggestion: "Parece que faltou um parêntese de abertura (. Verifique a sintaxe do comando."
   },
   {
     pattern: "\")\" esperado",
-    suggestion: "Faltou um parêntese de fechamento ). Verifique se todos os parênteses estão balanceados.",
+    suggestion: "Faltou um parêntese de fechamento ). Verifique se todos os parênteses estão balanceados."
   },
   {
     pattern: "Termo de expressão inválido",
-    suggestion: "Algo no código não é uma expressão válida em C#. Verifique se você digitou o comando corretamente.",
+    suggestion: "Algo no código não é uma expressão válida em C#. Verifique se você digitou o comando corretamente."
   },
   {
     pattern: "Acesso bloqueado",
-    suggestion: "Você tentou acessar algo restrito no sistema. Concentre-se nos comandos da missão atual.",
+    suggestion: "Você tentou acessar algo restrito no sistema. Concentre-se nos comandos da missão atual."
   },
   {
     pattern: "Tempo de execução excedido",
-    suggestion: "Seu código demorou muito para executar. Verifique se há um loop infinito (while sem condição de saída).",
-  },
+    suggestion: "Seu código demorou muito para executar. Verifique se há um loop infinito (while sem condição de saída)."
+  }
 ];
 
 export function getAuraErrorHint(errorMessage: string): string | null {

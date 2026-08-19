@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, TerminalSquare } from "lucide-react";
 
 interface GameWorldProps {
@@ -13,7 +13,7 @@ interface GameWorldProps {
 type Direction = "up" | "down" | "left" | "right";
 
 type GameBridge = {
-  destroy: (removeCanvas?: boolean, noReturn?: boolean) => void;
+  destroy: (removeCanvas: boolean, noReturn?: boolean) => void;
   events: {
     emit: (event: string, ...args: unknown[]) => boolean;
   };
@@ -139,7 +139,7 @@ interface TouchButtonProps {
   label: string;
   onStart: () => void;
   onEnd: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 function TouchButton({ label, onStart, onEnd, children }: TouchButtonProps) {

@@ -26,7 +26,8 @@ const PLAYER_SPEED = 185;
 class NebulosaScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Container;
   private playerShadow!: Phaser.GameObjects.Ellipse;
-  private controls!: ControlKeys;
+  private controls?: ControlKeys;
+  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private terminal!: Phaser.GameObjects.Rectangle;
   private terminalScreen!: Phaser.GameObjects.Rectangle;
   private terminalPrompt!: Phaser.GameObjects.Text;
@@ -76,6 +77,7 @@ class NebulosaScene extends Phaser.Scene {
       this.game.events.off("auracs:sync", this.handleSync, this);
       this.game.events.off("auracs:virtual-input", this.handleVirtualInput, this);
       this.game.events.off("auracs:interact", this.tryInteract, this);
+      this.input.keyboard?.off("keydown-E", this.tryInteract, this);
     });
   }
 
@@ -85,11 +87,10 @@ class NebulosaScene extends Phaser.Scene {
     let horizontal = 0;
     let vertical = 0;
 
-    const cursors = this.input.keyboard?.createCursorKeys();
-    if (this.controls.left.isDown || cursors?.left.isDown || this.virtualInput.left) horizontal -= 1;
-    if (this.controls.right.isDown || cursors?.right.isDown || this.virtualInput.right) horizontal += 1;
-    if (this.controls.up.isDown || cursors?.up.isDown || this.virtualInput.up) vertical -= 1;
-    if (this.controls.down.isDown || cursors?.down.isDown || this.virtualInput.down) vertical += 1;
+    if (this.controls?.left.isDown || this.cursors?.left.isDown || this.virtualInput.left) horizontal -= 1;
+    if (this.controls?.right.isDown || this.cursors?.right.isDown || this.virtualInput.right) horizontal += 1;
+    if (this.controls?.up.isDown || this.cursors?.up.isDown || this.virtualInput.up) vertical -= 1;
+    if (this.controls?.down.isDown || this.cursors?.down.isDown || this.virtualInput.down) vertical += 1;
 
     if (horizontal !== 0 && vertical !== 0) {
       horizontal *= Math.SQRT1_2;
@@ -105,6 +106,7 @@ class NebulosaScene extends Phaser.Scene {
 
     const moving = horizontal !== 0 || vertical !== 0;
     this.player.setRotation(moving ? Math.sin(time / 85) * 0.018 : 0);
+    this.playerShadow.setPosition(this.player.x, this.player.y + 22);
     this.playerShadow.setScale(moving ? 1.08 : 1, moving ? 0.92 : 1);
 
     if (horizontal < 0) this.player.setScale(-1, 1);
@@ -275,7 +277,7 @@ class NebulosaScene extends Phaser.Scene {
       left: Phaser.Input.Keyboard.KeyCodes.A,
       right: Phaser.Input.Keyboard.KeyCodes.D,
     }) as ControlKeys;
-
+    this.cursors = this.input.keyboard.createCursorKeys();
     this.input.keyboard.on("keydown-E", this.tryInteract, this);
   }
 

@@ -1,181 +1,181 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.CodeAnalysis.CSharp.Scripting;
-using Microsoft.CodeAnalysis.Scripting;
 using System.Collections.Concurrent;
-using System.Reflection;
-using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add CORS to allow frontend access
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? ["http://localhost:3000"];
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
+    options.AddPolicy("Frontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
 });
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("code-runner", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+});
+
 var app = builder.Build();
 
-app.UseCors("AllowFrontend");
+app.UseCors("Frontend");
+app.UseRateLimiter();
 
-// --- Script State Management ---
-var sessions = new ConcurrentDictionary<string, ScriptState<object>>();
+var sessions = new ConcurrentDictionary<string, CodeSession>();
+var sessionTtl = TimeSpan.FromHours(2);
+const int MaxSessions = 2_000;
+const int MaxCodeLength = 2_000;
 
-// Semaphore to prevent race conditions with Console.SetOut
-var consoleLock = new SemaphoreSlim(1, 1);
-
-// Shared script options — SANDBOXED: only safe namespaces allowed
-var scriptOptions = ScriptOptions.Default
-    .WithImports("System", "System.Collections.Generic", "System.Linq", "System.Text")
-    .WithReferences(
-        typeof(object).Assembly,
-        typeof(Console).Assembly,
-        typeof(System.Linq.Enumerable).Assembly,
-        Assembly.Load("System.Runtime"),
-        Assembly.Load("System.Collections")
-    );
-
-// Dangerous patterns to block before execution
-string[] blockedPatterns = [
-    "System.IO", "System.Net", "System.Diagnostics.Process",
-    "File.", "Directory.", "Path.", "StreamReader", "StreamWriter",
-    "HttpClient", "WebClient", "Socket",
-    "Environment.Exit", "Environment.SetEnvironmentVariable",
-    "Assembly.", "Reflection.", "AppDomain",
-    "Process.Start", "ProcessStartInfo",
-    "Registry", "RegistryKey",
-    "Thread.", "Task.Run", "Parallel."
-];
-
-app.MapPost("/run", async ([FromBody] CodeRequest request) =>
+void CleanupExpiredSessions()
 {
-    var sessionId = request.SessionId ?? "default";
-
-    // --- SANDBOX: Block dangerous code patterns ---
-    var codeToCheck = request.Code.Replace(" ", "");
-    foreach (var pattern in blockedPatterns)
+    var cutoff = DateTimeOffset.UtcNow - sessionTtl;
+    foreach (var (id, session) in sessions)
     {
-        if (codeToCheck.Contains(pattern.Replace(" ", ""), StringComparison.OrdinalIgnoreCase))
+        if (session.LastAccess < cutoff)
         {
-            return Results.Ok(new CodeResponse
+            sessions.TryRemove(id, out _);
+        }
+    }
+}
+
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "ok",
+    activeSessions = sessions.Count
+}));
+
+app.MapPost("/run", ([FromBody] CodeRequest request) =>
+{
+    CleanupExpiredSessions();
+
+    if (string.IsNullOrWhiteSpace(request.SessionId))
+    {
+        return Results.BadRequest(new CodeResponse
+        {
+            Success = false,
+            Logs = ["[ERRO]: sessionId é obrigatório."]
+        });
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Code))
+    {
+        return Results.BadRequest(new CodeResponse
+        {
+            Success = false,
+            Logs = ["[ERRO]: Digite um comando C# antes de executar."]
+        });
+    }
+
+    if (request.Code.Length > MaxCodeLength)
+    {
+        return Results.BadRequest(new CodeResponse
+        {
+            Success = false,
+            Logs = [$"[ERRO]: Código muito grande. Limite: {MaxCodeLength} caracteres."]
+        });
+    }
+
+    if (!sessions.TryGetValue(request.SessionId, out var session))
+    {
+        if (sessions.Count >= MaxSessions)
+        {
+            CleanupExpiredSessions();
+            if (sessions.Count >= MaxSessions)
             {
-                Success = false,
-                Logs = [$"[ERRO DE SEGURANÇA]: Acesso bloqueado. O comando contém operações restritas ({pattern})."]
-            });
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
         }
+
+        session = new CodeSession();
+        sessions[request.SessionId] = session;
     }
 
-    // Lock to prevent race condition with Console.SetOut
-    await consoleLock.WaitAsync();
+    session.LastAccess = DateTimeOffset.UtcNow;
 
-    var sb = new StringBuilder();
-    var writer = new StringWriter(sb);
-    var originalOut = Console.Out;
-    Console.SetOut(writer);
-
-    try
+    var result = SafeCodeEvaluator.Evaluate(request.Code, session);
+    if (!result.Success)
     {
-        // Execute with timeout (5 seconds max)
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-
-        ScriptState<object> state;
-
-        if (sessions.TryGetValue(sessionId, out var previousState))
-        {
-            state = await previousState.ContinueWithAsync<object>(request.Code, scriptOptions,
-                cancellationToken: cts.Token);
-        }
-        else
-        {
-            var globals = new ScriptGlobals { Energy = request.Context?.Energy ?? 0 };
-            state = await CSharpScript.RunAsync<object>(request.Code, scriptOptions,
-                globals: globals, cancellationToken: cts.Token);
-        }
-
-        sessions[sessionId] = state;
-
-        Console.SetOut(originalOut);
-
-        return Results.Ok(new CodeResponse
-        {
-            Success = true,
-            Logs = sb.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries),
-            ReturnValue = state.ReturnValue?.ToString()
-        });
-    }
-    catch (CompilationErrorException e)
-    {
-        Console.SetOut(originalOut);
         return Results.Ok(new CodeResponse
         {
             Success = false,
-            Logs = e.Diagnostics.Select(d => $"[ERRO]: {d.GetMessage()}").ToArray()
+            Logs = result.Logs
         });
     }
-    catch (OperationCanceledException)
-    {
-        Console.SetOut(originalOut);
-        return Results.Ok(new CodeResponse
-        {
-            Success = false,
-            Logs = ["[ERRO]: Tempo de execução excedido (máximo 5 segundos). Verifique se há loops infinitos."]
-        });
-    }
-    catch (Exception e)
-    {
-        Console.SetOut(originalOut);
-        return Results.Ok(new CodeResponse
-        {
-            Success = false,
-            Logs = [$"[ERRO CRÍTICO]: {e.Message}"]
-        });
-    }
-    finally
-    {
-        consoleLock.Release();
-    }
-});
 
-// Reset session endpoint
+    var challenge = ChallengeValidator.Validate(request.ChallengeId, session, result);
+
+    return Results.Ok(new CodeResponse
+    {
+        Success = true,
+        Logs = result.Logs,
+        ReturnValue = result.ReturnValue,
+        ChallengePassed = challenge.Passed,
+        Feedback = challenge.Feedback,
+        ChoiceValue = challenge.ChoiceValue
+    });
+})
+.RequireRateLimiting("code-runner");
+
 app.MapPost("/reset", ([FromBody] ResetRequest request) =>
 {
-    var sessionId = request.SessionId ?? "default";
-    sessions.TryRemove(sessionId, out _);
-    return Results.Ok(new { Success = true, Message = "Sessão resetada." });
-});
+    if (string.IsNullOrWhiteSpace(request.SessionId))
+    {
+        return Results.BadRequest(new { Success = false, Message = "sessionId é obrigatório." });
+    }
+
+    var removed = sessions.TryRemove(request.SessionId, out _);
+    return Results.Ok(new
+    {
+        Success = true,
+        Removed = removed,
+        Message = removed ? "Sessão resetada." : "Sessão já estava vazia."
+    });
+})
+.RequireRateLimiting("code-runner");
 
 app.Run();
 
-// DTOs
-public class CodeRequest
+public sealed class CodeRequest
 {
     public string Code { get; set; } = "";
     public string? SessionId { get; set; }
-    public GameContext? Context { get; set; }
+    public string? ChallengeId { get; set; }
 }
 
-public class ResetRequest
+public sealed class ResetRequest
 {
     public string? SessionId { get; set; }
 }
 
-public class GameContext
-{
-    public int Energy { get; set; }
-}
-
-public class CodeResponse
+public sealed class CodeResponse
 {
     public bool Success { get; set; }
     public string[] Logs { get; set; } = [];
     public string? ReturnValue { get; set; }
+    public bool ChallengePassed { get; set; }
+    public string? Feedback { get; set; }
+    public int? ChoiceValue { get; set; }
 }
 
-public class ScriptGlobals
+public sealed class CodeSession
 {
-    public int Energy { get; set; }
+    public Dictionary<string, SafeValue> Variables { get; } = new(StringComparer.Ordinal);
+    public DateTimeOffset LastAccess { get; set; } = DateTimeOffset.UtcNow;
 }

@@ -1,0 +1,30 @@
+name: Refresh npm lockfile
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Regenerate lockfile
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Upload lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: refreshed-lockfile
+          path: web/package-lock.json
+          if-no-files-found: error

@@ -15,8 +15,8 @@ public class Capitulo1
         Console.ResetColor();
         Console.WriteLine(); // Espaçamento
         Thread.Sleep(3000); // Pausa para leitura
-        
-        // --- FALA DA AURA --- 
+
+        // --- FALA DA AURA ---
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("[AURA]: Kael, que bom que você acordou. Tivemos... um problema. A energia primária está em nível crítico.");
         Console.WriteLine("[AURA]: Meus sistemas de controle direto foram danificados. Para interagir comigo e com a nave, você precisará usar o terminal de comando com a sintaxe C#.");
@@ -34,36 +34,41 @@ public class Capitulo1
         Console.CursorVisible = false;
 
         // Verificação simples (em um projeto real, seria mais robusto)
-        if (inputUsuario.Trim() == "int nivelDeEnergia = 25;")
-        {
-            int nivelDeEnergia = 25; // A variável é declarada aqui para o escopo do if
-            Console.ForegroundColor = ConsoleColor.Yellow;        
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("\n[AURA]: Correto. A variável foi criada. Agora, vamos exibir o valor para confirmar.");
-            Console.ResetColor();
-
-            Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine("Sua Tarefa: Use Console.WriteLine para mostrar o valor. Digite o código:");
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("Console.WriteLine(\"Nível de energia: \" + nivelDeEnergia + \"%\");");
-            Console.CursorVisible = true;
-            inputUsuario = Console.ReadLine() ?? "";
-            Console.CursorVisible = false;
-
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("\n--- SAÍDA DO CONSOLE DA NAVE ---");
-            // Aqui usamos a variável de verdade para mostrar o conceito
-            Console.WriteLine("Nível de energia: " + nivelDeEnergia + "%");
-            Console.WriteLine("---------------------------------\n");
-            Console.ResetColor();
-        }
-        else
+        if (inputUsuario.Trim() != "int nivelDeEnergia = 25;")
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("\n[AURA]: Hmm, a sintaxe não parece correta. Lembre-se: tipo, nome, sinal de igual, valor e ponto e vírgula. Tente novamente mais tarde.");
             // Em um jogo real, aqui teria um loop para tentar de novo.
             return; // Fim do programa por simplicidade
         }
+
+        int nivelDeEnergia = 25;
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("\n[AURA]: Correto. A variável foi criada. Agora, vamos exibir o valor para confirmar.");
+        Console.ResetColor();
+
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("Sua Tarefa: Use Console.WriteLine para mostrar o valor. Digite o código:");
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("Console.WriteLine(\"Nível de energia: \" + nivelDeEnergia + \"%\");");
+        Console.CursorVisible = true;
+        inputUsuario = Console.ReadLine() ?? "";
+        Console.CursorVisible = false;
+
+        if (inputUsuario.Trim() != "Console.WriteLine(\"Nível de energia: \" + nivelDeEnergia + \"%\");")
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("\n[AURA]: Hmm, a sintaxe não parece correta. Lembre-se: classe, método, parênteses, texto e ponto e vírgula. Tente novamente mais tarde.");
+            // Em um jogo real, aqui teria um loop para tentar de novo.
+            return; // Fim do programa por simplicidade
+        }
+
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("\n--- SAÍDA DO CONSOLE DA NAVE ---");
+        // Aqui usamos a variável de verdade para mostrar o conceito
+        Console.WriteLine("Nível de energia: " + nivelDeEnergia + "%");
+        Console.WriteLine("---------------------------------\n");
+        Console.ResetColor();
 
         Thread.Sleep(2000);
 
@@ -98,7 +103,6 @@ public class Capitulo1
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("\n--- RESULTADO ---");
             Console.WriteLine("Energia desviada para os escudos. O ar ficará rarefeito, mas estamos protegidos da radiação.");
-
         }
         else if (escolha == "2")
         {
@@ -119,6 +123,7 @@ public class Capitulo1
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("[AURA]: Escolha inválida. O sistema não reagiu.");
         }
+
         Console.ResetColor();
         Console.WriteLine("\nFim do Capítulo 1... Continua...");
     }

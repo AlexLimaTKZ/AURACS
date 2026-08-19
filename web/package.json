@@ -16,6 +16,7 @@
     "howler": "^2.2.4",
     "lucide-react": "^0.563.0",
     "next": "16.3.1",
+    "phaser": "^4.2.1",
     "prismjs": "^1.30.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",

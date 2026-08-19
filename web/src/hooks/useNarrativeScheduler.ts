@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 export function useNarrativeScheduler() {
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -35,5 +35,8 @@ export function useNarrativeScheduler() {
 
   useEffect(() => clearAll, [clearAll]);
 
-  return { schedule, repeat, stopRepeat, clearAll };
+  return useMemo(
+    () => ({ schedule, repeat, stopRepeat, clearAll }),
+    [schedule, repeat, stopRepeat, clearAll]
+  );
 }

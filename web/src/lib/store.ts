@@ -1,9 +1,7 @@
-
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export interface GameState {
-  // Game progress
   energy: number;
   integrity: number;
   inventory: string[];
@@ -11,20 +9,14 @@ export interface GameState {
   currentStepId: string;
   unlockedAchievements: string[];
   consecutiveSuccesses: number;
-
-  // Actions
   updateEnergy: (amount: number) => void;
   addItem: (item: string) => void;
   setChapter: (chapterId: string) => void;
   setStep: (stepId: string) => void;
   unlockAchievement: (id: string) => void;
   setConsecutiveSuccesses: (n: number) => void;
-
-  // Reset actions
   resetAll: () => void;
   resetChapter: () => void;
-
-  // Hydration check
   _hasHydrated: boolean;
   setHasHydrated: (val: boolean) => void;
 }
@@ -56,7 +48,6 @@ export const useGameStore = create<GameState>()(
         })),
 
       setChapter: (id) => set({ currentChapterId: id }),
-
       setStep: (stepId) => set({ currentStepId: stepId }),
 
       unlockAchievement: (id) =>
@@ -67,18 +58,14 @@ export const useGameStore = create<GameState>()(
         })),
 
       setConsecutiveSuccesses: (n) => set({ consecutiveSuccesses: n }),
-
       resetAll: () => set({ ...INITIAL_STATE }),
-
       resetChapter: () =>
-        set((state) => ({
+        set({
           energy: 100,
           integrity: 100,
           currentStepId: "step-1",
           consecutiveSuccesses: 0,
-          // Keep achievements and chapter ID
-        })),
-
+        }),
       setHasHydrated: (val) => set({ _hasHydrated: val }),
     }),
     {

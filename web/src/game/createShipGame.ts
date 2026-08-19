@@ -1,4 +1,9 @@
 import Phaser from "phaser";
+import {
+  createKaelSprite,
+  updateKaelAnimation,
+  type FacingDirection,
+} from "@/game/kaelSprite";
 
 export interface ShipGameSyncState {
   energy: number;
@@ -24,8 +29,9 @@ const GAME_HEIGHT = 540;
 const PLAYER_SPEED = 185;
 
 class NebulosaScene extends Phaser.Scene {
-  private player!: Phaser.GameObjects.Container;
+  private player!: Phaser.GameObjects.Sprite;
   private playerShadow!: Phaser.GameObjects.Ellipse;
+  private facing: FacingDirection = "down";
   private controls?: ControlKeys;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private terminal!: Phaser.GameObjects.Rectangle;
@@ -81,7 +87,7 @@ class NebulosaScene extends Phaser.Scene {
     });
   }
 
-  update(time: number, delta: number) {
+  update(_time: number, delta: number) {
     if (!this.player || this.terminalOpen) return;
 
     let horizontal = 0;
@@ -105,12 +111,17 @@ class NebulosaScene extends Phaser.Scene {
     if (!this.isBlocked(this.player.x, nextY)) this.player.y = nextY;
 
     const moving = horizontal !== 0 || vertical !== 0;
-    this.player.setRotation(moving ? Math.sin(time / 85) * 0.018 : 0);
-    this.playerShadow.setPosition(this.player.x, this.player.y + 22);
-    this.playerShadow.setScale(moving ? 1.08 : 1, moving ? 0.92 : 1);
+    if (moving) {
+      if (Math.abs(horizontal) > Math.abs(vertical)) {
+        this.facing = horizontal < 0 ? "left" : "right";
+      } else if (vertical !== 0) {
+        this.facing = vertical < 0 ? "up" : "down";
+      }
+    }
 
-    if (horizontal < 0) this.player.setScale(-1, 1);
-    if (horizontal > 0) this.player.setScale(1, 1);
+    updateKaelAnimation(this.player, this.facing, moving);
+    this.playerShadow.setPosition(this.player.x, this.player.y + 16);
+    this.playerShadow.setScale(moving ? 1.08 : 1, moving ? 0.92 : 1);
 
     const wasNearTerminal = this.nearTerminal;
     this.nearTerminal = Phaser.Math.Distance.Between(
@@ -245,17 +256,8 @@ class NebulosaScene extends Phaser.Scene {
   }
 
   private createPlayer() {
-    this.playerShadow = this.add.ellipse(280, 392, 34, 13, 0x000000, 0.42).setDepth(4);
-
-    const legs = this.add.rectangle(0, 13, 19, 15, 0x0f766e, 1).setStrokeStyle(1, 0x5eead4, 0.35);
-    const torso = this.add.rectangle(0, -2, 27, 28, 0x155e75, 1).setStrokeStyle(2, 0x67e8f9, 0.55);
-    const shoulder = this.add.rectangle(0, -5, 34, 8, 0x083344, 1);
-    const helmet = this.add.circle(0, -24, 14, 0xdbeafe, 1).setStrokeStyle(2, 0x67e8f9, 0.9);
-    const visor = this.add.rectangle(4, -24, 15, 8, 0x0f172a, 1).setStrokeStyle(1, 0x22d3ee, 0.8);
-    const backpack = this.add.rectangle(-15, -3, 7, 22, 0x020617, 1).setStrokeStyle(1, 0x475569, 0.8);
-
-    this.player = this.add.container(280, 370, [backpack, legs, torso, shoulder, helmet, visor]).setDepth(10);
-    this.player.setSize(36, 54);
+    this.playerShadow = this.add.ellipse(280, 386, 38, 13, 0x000000, 0.46).setDepth(4);
+    this.player = createKaelSprite(this, 280, 370);
   }
 
   private createMissionLabel() {

@@ -1,7 +1,6 @@
-
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface ChapterTransitionProps {
   isActive: boolean;
@@ -9,6 +8,13 @@ interface ChapterTransitionProps {
   chapterSubtitle?: string;
   onComplete?: () => void;
 }
+
+const HYPERSPACE_LINES = Array.from({ length: 30 }, (_, index) => ({
+  id: index,
+  top: 5 + ((index * 37) % 90),
+  destination: index % 2 === 0 ? 150 : -50,
+  delay: 0.5 + index * 0.05,
+}));
 
 export function ChapterTransition({
   isActive,
@@ -25,34 +31,28 @@ export function ChapterTransition({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.8 }}
           onAnimationComplete={() => {
-            // Auto-dismiss after animation
             setTimeout(() => onComplete?.(), 3000);
           }}
           className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 backdrop-blur-xl"
         >
-          {/* Hyperspace lines */}
           <div className="absolute inset-0 overflow-hidden">
-            {[...Array(30)].map((_, i) => (
+            {HYPERSPACE_LINES.map((line) => (
               <motion.div
-                key={i}
-                initial={{ 
-                  scaleX: 0, 
-                  opacity: 0,
-                  x: "50%",
-                }}
-                animate={{ 
-                  scaleX: [0, 1, 20], 
+                key={line.id}
+                initial={{ scaleX: 0, opacity: 0, x: "50%" }}
+                animate={{
+                  scaleX: [0, 1, 20],
                   opacity: [0, 0.6, 0],
-                  x: ["50%", "50%", `${Math.random() > 0.5 ? 150 : -50}%`],
+                  x: ["50%", "50%", `${line.destination}%`],
                 }}
                 transition={{
                   duration: 1.5,
-                  delay: 0.5 + i * 0.05,
+                  delay: line.delay,
                   ease: "easeIn",
                 }}
                 className="absolute h-[1px] bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent"
                 style={{
-                  top: `${5 + Math.random() * 90}%`,
+                  top: `${line.top}%`,
                   left: 0,
                   right: 0,
                   transformOrigin: "center",
@@ -61,16 +61,14 @@ export function ChapterTransition({
             ))}
           </div>
 
-          {/* Central flash */}
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: [0, 1, 50], opacity: [0, 1, 0] }}
             transition={{ duration: 2, delay: 1.2, ease: "easeOut" }}
-            className="absolute w-4 h-4 rounded-full bg-white"
+            className="absolute h-4 w-4 rounded-full bg-white"
             style={{ boxShadow: "0 0 60px 30px rgba(6,182,212,0.5)" }}
           />
 
-          {/* Chapter title */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -81,16 +79,16 @@ export function ChapterTransition({
               initial={{ width: 0 }}
               animate={{ width: "100%" }}
               transition={{ delay: 0.5, duration: 0.8 }}
-              className="h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent mx-auto mb-6 max-w-[200px]"
+              className="mx-auto mb-6 h-px max-w-[200px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"
             />
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white to-cyan-200/80">
+            <h2 className="bg-gradient-to-b from-white to-cyan-200/80 bg-clip-text text-3xl font-bold tracking-tighter text-transparent md:text-4xl">
               {chapterTitle}
             </h2>
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1 }}
-              className="text-xs text-cyan-400/50 uppercase tracking-[0.25em] mt-3 font-mono"
+              className="mt-3 font-mono text-xs uppercase tracking-[0.25em] text-cyan-400/50"
             >
               {chapterSubtitle}
             </motion.p>
@@ -98,7 +96,7 @@ export function ChapterTransition({
               initial={{ width: 0 }}
               animate={{ width: "100%" }}
               transition={{ delay: 0.5, duration: 0.8 }}
-              className="h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent mx-auto mt-6 max-w-[200px]"
+              className="mx-auto mt-6 h-px max-w-[200px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"
             />
           </motion.div>
         </motion.div>

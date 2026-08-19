@@ -1,38 +1,129 @@
-# Crônicas da Nebulosa
+# AURACS — Crônicas da Nebulosa
 
-*Uma Aventura Interativa de Aprendizagem em C#*
+AURACS é um jogo educacional de ficção científica para aprender C# resolvendo problemas dentro de uma nave espacial. O jogador interage com a AURA, escreve código no terminal, recebe feedback imediato, toma decisões e desbloqueia conquistas enquanto avança pela narrativa.
 
----
+## Arquitetura
 
-## Visão Geral
+```text
+Browser
+  -> Next.js 16 / React 19
+  -> ASP.NET Core (.NET 8)
+  -> Roslyn Syntax Tree
+  -> SafeCodeEvaluator
+```
 
-**Crônicas da Nebulosa** é um jogo educacional baseado em texto, projetado para ensinar lógica de programação e a sintaxe da linguagem C# de uma forma envolvente e interativa. Utilizando uma narrativa de ficção científica como pano de fundo, os jogadores assumem o papel de um viajante espacial que deve usar código C# para resolver problemas, reparar sua nave e sobreviver em uma galáxia desconhecida.
+O frontend contém a experiência do jogo e persiste o progresso localmente com Zustand. A API analisa e interpreta somente as construções de C# necessárias às atividades atuais.
 
-## A História
+No primeiro capítulo são suportados:
 
-Você é Kael, um jovem piloto e engenheiro a bordo da nave de exploração "A Nebulosa". Sua única companhia é AURA (Assistente Utilitária de Raciocínio Analítico), a inteligência artificial da nave.
+- variáveis `int`;
+- atribuições simples;
+- literais `int` e `string`;
+- operações aritméticas básicas;
+- concatenação de strings;
+- `Console.WriteLine`.
 
-Após um salto hiperespacial de emergência que deu terrivelmente errado, a Nebulosa está danificada e perdida. Para piorar, os sistemas de controle de AURA foram corrompidos, e a única maneira de interagir com os sistemas da nave é através de comandos diretos, escritos na sintaxe C#. Sua jornada para casa dependerá da sua capacidade de aprender (ou reaprender) a programar para guiar AURA e consertar a nave, um desafio de cada vez.
+A API também possui limite de requisições, limite de tamanho de entrada, expiração de sessões, CORS configurável e endpoint de saúde.
 
-## Como Funciona
+## Stack
 
-O jogo é estruturado em capítulos. Cada capítulo apresenta um novo problema na história que só pode ser resolvido aplicando um conceito de programação específico.
+### Frontend
 
-1.  **Narrativa:** A história se desenrola, apresentando um desafio (ex: restaurar a energia, navegar em um campo de asteroides).
-2.  **Instrução:** AURA atua como sua mentora, explicando o problema do ponto de vista da lógica e dando dicas sobre qual conceito de programação é necessário.
-3.  **Código:** O jogador deve escrever código C# real em um terminal simulado para executar ações e progredir na história.
-4.  **Feedback:** O sistema fornece feedback imediato, informando se o código está correto e mostrando o resultado da ação dentro do universo do jogo.
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- Zustand
+- Framer Motion
+- Howler
+- PrismJS
 
-## Como Jogar
+### Backend
 
-Este projeto é um aplicativo de console .NET.
+- ASP.NET Core / .NET 8
+- Microsoft.CodeAnalysis.CSharp (Roslyn)
+- xUnit
 
-1.  **Pré-requisitos:** Certifique-se de ter o [SDK do .NET](https://dotnet.microsoft.com/download) instalado em sua máquina.
-2.  **Clone o repositório:** `git clone <URL_DO_REPOSITORIO>`
-3.  **Navegue até a pasta do projeto:**
-4.  **Execute o projeto:** Use o comando `dotnet run` no seu terminal. O jogo será compilado e iniciado.
+## Estrutura
 
-## Tecnologias
+```text
+AURACS/
+├─ App/                    # versão console original
+├─ api/                    # API e avaliador de código
+│  ├─ Program.cs
+│  ├─ SafeCodeEvaluator.cs
+│  └─ ChallengeValidator.cs
+├─ api.Tests/              # testes automatizados
+├─ web/
+│  └─ src/
+│     ├─ app/              # composição da aplicação
+│     ├─ components/       # UI
+│     ├─ hooks/            # motor da narrativa
+│     └─ lib/              # conteúdo, estado e cliente HTTP
+└─ .github/workflows/ci.yml
+```
 
-*   **Linguagem:** C#
-*   **Plataforma:** .NET
+`App/` representa a primeira versão em console e permanece como referência histórica. A experiência principal atual é formada por `web + api`.
+
+## Executar localmente
+
+Pré-requisitos:
+
+- .NET SDK 8
+- Node.js 22+
+- npm
+
+Na raiz:
+
+```bash
+npm install
+npm run install:web
+cp web/.env.example web/.env.local
+npm run dev
+```
+
+Serviços locais:
+
+- frontend: `http://localhost:3000`
+- API: `http://localhost:5000`
+
+## Produção
+
+Configure no frontend:
+
+```env
+NEXT_PUBLIC_API_URL=https://sua-api.exemplo.com
+```
+
+Configure os domínios permitidos da API em `Cors:AllowedOrigins`.
+
+## Testes e qualidade
+
+Backend:
+
+```bash
+dotnet test api.Tests/api.Tests.csproj
+```
+
+Frontend:
+
+```bash
+cd web
+npm run lint
+npm run build
+```
+
+A GitHub Action executa build e testes do backend, além de lint e build do frontend em pull requests para `main`.
+
+## Validação dos desafios
+
+Os desafios são avaliados pelo resultado do código e pelo estado produzido, em vez de depender apenas da comparação textual do comando digitado. Isso permite aceitar soluções equivalentes quando elas realmente atendem ao objetivo pedagógico.
+
+## Roadmap
+
+- novos capítulos e conceitos de C#;
+- ampliar gradualmente o subconjunto suportado da linguagem;
+- modularizar capítulos;
+- persistência opcional por usuário;
+- testes end-to-end;
+- melhorias de acessibilidade e opções de redução de movimento/áudio.

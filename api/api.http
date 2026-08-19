@@ -1,6 +1,25 @@
-@api_HostAddress = http://localhost:5168
+@api_HostAddress = http://localhost:5000
+@sessionId = local-dev-session
 
-GET {{api_HostAddress}}/weatherforecast/
+GET {{api_HostAddress}}/health
 Accept: application/json
 
 ###
+
+POST {{api_HostAddress}}/run
+Content-Type: application/json
+
+{
+  "code": "int nivelDeEnergia = 25;",
+  "sessionId": "{{sessionId}}",
+  "challengeId": "step-2"
+}
+
+###
+
+POST {{api_HostAddress}}/reset
+Content-Type: application/json
+
+{
+  "sessionId": "{{sessionId}}"
+}

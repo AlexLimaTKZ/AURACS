@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Editor from "react-simple-code-editor";
 import { highlight, languages } from "prismjs";
 import "prismjs/components/prism-csharp";
-import "prismjs/themes/prism-dark.css"; // We'll override this with custom CSS later
+import "prismjs/themes/prism-dark.css";
 
 interface CodeEditorProps {
   value: string;
@@ -15,23 +15,22 @@ interface CodeEditorProps {
 
 export function CodeEditor({ value, onChange, onSubmit, disabled }: CodeEditorProps) {
   return (
-    <div className="relative font-mono text-[13px] leading-relaxed w-full">
+    <div className="relative w-full font-mono text-[13px] leading-relaxed">
       <style jsx global>{`
         .prism-editor textarea {
           outline: none !important;
         }
-        /* Custom Syntax Colors for Cyberpunk/Terminal Look */
         .token.comment,
         .token.prolog,
         .token.doctype,
         .token.cdata {
-          color: #6c7280; /* Gray */
+          color: #6c7280;
         }
         .token.punctuation {
-          color: #94a3b8; /* Slate */
+          color: #94a3b8;
         }
         .token.namespace {
-          opacity: .7;
+          opacity: 0.7;
         }
         .token.property,
         .token.tag,
@@ -40,7 +39,7 @@ export function CodeEditor({ value, onChange, onSubmit, disabled }: CodeEditorPr
         .token.constant,
         .token.symbol,
         .token.deleted {
-          color: #f472b6; /* Pink */
+          color: #f472b6;
         }
         .token.selector,
         .token.attr-name,
@@ -48,28 +47,28 @@ export function CodeEditor({ value, onChange, onSubmit, disabled }: CodeEditorPr
         .token.char,
         .token.builtin,
         .token.inserted {
-          color: #34d399; /* Emerald/Green */
+          color: #34d399;
         }
         .token.operator,
         .token.entity,
         .token.url,
         .language-css .token.string,
         .style .token.string {
-          color: #facc15; /* Yellow */
+          color: #facc15;
         }
         .token.atrule,
         .token.attr-value,
         .token.keyword {
-          color: #60a5fa; /* Blue */
+          color: #60a5fa;
         }
         .token.function,
         .token.class-name {
-          color: #a78bfa; /* Violet */
+          color: #a78bfa;
         }
         .token.regex,
         .token.important,
         .token.variable {
-          color: #fbbf24; /* Amber */
+          color: #fbbf24;
         }
       `}</style>
       <Editor
@@ -78,7 +77,7 @@ export function CodeEditor({ value, onChange, onSubmit, disabled }: CodeEditorPr
         highlight={(code) => highlight(code, languages.csharp, "csharp")}
         padding={10}
         textareaClassName="focus:outline-none"
-        className="font-mono bg-transparent min-h-[60px]"
+        className="min-h-[60px] bg-transparent font-mono"
         style={{
           fontFamily: '"Fira Code", "Fira Mono", monospace',
           fontSize: 13,
@@ -86,13 +85,13 @@ export function CodeEditor({ value, onChange, onSubmit, disabled }: CodeEditorPr
         }}
         disabled={disabled}
         ignoreTabKey={false}
-        insertSpaces={true}
+        insertSpaces
         tabSize={4}
-        onKeyDown={(e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                onSubmit();
-            }
+        onKeyDown={(event) => {
+          if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+            event.preventDefault();
+            onSubmit();
+          }
         }}
       />
     </div>

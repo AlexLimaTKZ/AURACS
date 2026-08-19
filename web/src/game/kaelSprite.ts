@@ -83,7 +83,7 @@ export function updateKaelAnimation(
 }
 
 function generateKaelFrame(scene: Phaser.Scene, direction: FacingDirection, frame: number) {
-  const graphics = scene.make.graphics({ add: false });
+  const graphics = scene.add.graphics().setVisible(false);
   const px: PixelDrawer = (x, y, width, height, color, alpha = 1) => {
     graphics.fillStyle(color, alpha);
     graphics.fillRect(x, y, width, height);
@@ -102,11 +102,9 @@ function generateKaelFrame(scene: Phaser.Scene, direction: FacingDirection, fram
 }
 
 function drawFront(px: PixelDrawer, stride: number, bob: number) {
-  // backpack silhouette
   px(7, 17 + bob, 18, 17, palette.outline);
   px(8, 18 + bob, 16, 15, palette.shadow);
 
-  // helmet and cyan glass
   px(9, 4 + bob, 14, 3, palette.outline);
   px(7, 7 + bob, 18, 12, palette.outline);
   px(8, 6 + bob, 16, 11, palette.armor);
@@ -115,7 +113,6 @@ function drawFront(px: PixelDrawer, stride: number, bob: number) {
   px(11, 12 + bob, 10, 3, palette.visorGlow, 0.82);
   px(12, 12 + bob, 3, 1, 0xffffff, 0.72);
 
-  // shoulders, torso and suit panels
   px(5, 19 + bob, 22, 5, palette.outline);
   px(6, 20 + bob, 20, 4, palette.suitDark);
   px(8, 23 + bob, 16, 14, palette.outline);
@@ -126,7 +123,6 @@ function drawFront(px: PixelDrawer, stride: number, bob: number) {
   px(9, 34 + bob, 14, 3, palette.outline);
   px(10, 34 + bob, 12, 2, palette.warning);
 
-  // arms
   px(4, 23 + bob, 5, 12, palette.outline);
   px(5, 24 + bob, 3, 9, palette.suitDark);
   px(23, 23 + bob, 5, 12, palette.outline);
@@ -134,7 +130,6 @@ function drawFront(px: PixelDrawer, stride: number, bob: number) {
   px(5, 33 + bob, 3, 3, palette.armor);
   px(24, 33 + bob, 3, 3, palette.armor);
 
-  // legs with alternating stride
   px(9 + Math.min(stride, 0), 37, 7, 8, palette.outline);
   px(10 + Math.min(stride, 0), 37, 5, 6, palette.suitDark);
   px(16 + Math.max(stride, 0), 37, 7, 8, palette.outline);
@@ -144,7 +139,6 @@ function drawFront(px: PixelDrawer, stride: number, bob: number) {
 }
 
 function drawBack(px: PixelDrawer, stride: number, bob: number) {
-  // helmet rear
   px(8, 5 + bob, 16, 3, palette.outline);
   px(7, 8 + bob, 18, 11, palette.outline);
   px(8, 7 + bob, 16, 11, palette.armor);
@@ -152,7 +146,6 @@ function drawBack(px: PixelDrawer, stride: number, bob: number) {
   px(10, 13 + bob, 12, 3, palette.shadow);
   px(14, 14 + bob, 4, 2, palette.visorGlow, 0.6);
 
-  // large backpack / life support
   px(6, 19 + bob, 20, 17, palette.outline);
   px(7, 20 + bob, 18, 15, palette.shadow);
   px(9, 21 + bob, 14, 12, palette.suitDark);
@@ -161,13 +154,11 @@ function drawBack(px: PixelDrawer, stride: number, bob: number) {
   px(17, 24 + bob, 3, 4, palette.warning);
   px(10, 31 + bob, 12, 2, palette.armor);
 
-  // arms
   px(4, 22 + bob, 4, 13, palette.outline);
   px(5, 23 + bob, 3, 10, palette.suitDark);
   px(24, 22 + bob, 4, 13, palette.outline);
   px(24, 23 + bob, 3, 10, palette.suitDark);
 
-  // legs
   px(9 + Math.min(stride, 0), 35, 7, 10, palette.outline);
   px(10 + Math.min(stride, 0), 36, 5, 7, palette.suitDark);
   px(16 + Math.max(stride, 0), 35, 7, 10, palette.outline);
@@ -181,7 +172,6 @@ function drawSide(px: PixelDrawer, stride: number, bob: number, faceRight: boole
   const rect: PixelDrawer = (x, y, width, height, color, alpha = 1) =>
     px(mirror(x, width), y, width, height, color, alpha);
 
-  // backpack and helmet profile
   rect(7, 18 + bob, 8, 16, palette.outline);
   rect(8, 19 + bob, 6, 14, palette.shadow);
   rect(9, 5 + bob, 14, 3, palette.outline);
@@ -190,19 +180,16 @@ function drawSide(px: PixelDrawer, stride: number, bob: number, faceRight: boole
   rect(17, 10 + bob, 7, 6, palette.visor);
   rect(19, 11 + bob, 5, 3, palette.visorGlow, 0.88);
 
-  // torso and chest light
   rect(9, 20 + bob, 15, 16, palette.outline);
   rect(10, 21 + bob, 13, 14, palette.suit);
   rect(17, 23 + bob, 6, 3, palette.suitLight);
   rect(10, 33 + bob, 13, 3, palette.warning);
 
-  // near arm swings opposite the legs
   const armSwing = stride === 0 ? 0 : stride > 0 ? -2 : 2;
   rect(20 + armSwing, 23 + bob, 5, 12, palette.outline);
   rect(21 + armSwing, 24 + bob, 3, 9, palette.suitDark);
   rect(21 + armSwing, 33 + bob, 3, 3, palette.armor);
 
-  // legs read clearly from profile
   const frontLeg = stride;
   const backLeg = -stride;
   rect(16 + frontLeg, 36, 7, 9, palette.outline);

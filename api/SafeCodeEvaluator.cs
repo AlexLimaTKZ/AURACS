@@ -74,7 +74,8 @@ public static class SafeCodeEvaluator
 
     private static void EvaluateDeclaration(LocalDeclarationStatementSyntax declaration, CodeSession session)
     {
-        if (!declaration.Declaration.Type.IsKind(SyntaxKind.IntKeyword))
+        if (declaration.Declaration.Type is not PredefinedTypeSyntax predefinedType ||
+            !predefinedType.Keyword.IsKind(SyntaxKind.IntKeyword))
         {
             throw new UnsafeCodeException("Apenas variáveis do tipo int são permitidas neste capítulo.");
         }

@@ -35,22 +35,27 @@ jobs:
         run: |
           set -euo pipefail
           exec > >(tee /tmp/reconstruct.log) 2>&1
-          PAYLOAD_SHA="7b36a1336b8edea7146c29ec82cbdd31a2293450"
-          echo "Fetching staging branch..."
           git fetch origin automation/auracs-main-fixes
-          echo "Checking pinned payload commit..."
-          git cat-file -t "${PAYLOAD_SHA}"
+          BLOBS=(
+            7afe7928f973ef830ff32ffa0aa5b3bffe1ea052
+            3ae1bb3a0a52c31884522b88ee77ceab867f11d8
+            9b933f6391ab557be26ed97723a6196cea666933
+            01339f50902a8aaf9d7d6316d97096ae1eec26c1
+            f1097c947a8de01679eb683ff9ded9cb117fd20e
+            8fa5cb3cd955e6336256a42b7dfdae125b87be2e
+            ac6250fa7a991865eecd66a7502450fbc977c675
+            56fb747637f25c548894317fbc49c06594065f90
+          )
           : > /tmp/payload.b64
-          for i in 00 01 02 03 04 05 06 07; do
-            echo "Reading chunk${i}"
-            git cat-file -e "${PAYLOAD_SHA}:.auracs-patch/chunk${i}.txt"
-            git cat-file blob "${PAYLOAD_SHA}:.auracs-patch/chunk${i}.txt" >> /tmp/payload.b64
+          for blob in "${BLOBS[@]}"; do
+            echo "Reading blob ${blob}"
+            test "$(git cat-file -t "$blob")" = "blob"
+            git cat-file blob "$blob" >> /tmp/payload.b64
           done
+          wc -c /tmp/payload.b64
           test "$(wc -c < /tmp/payload.b64)" -eq 47556
           echo "ae98ab7c20894aab3451ed707f93908910c2aef57400a1b2128879c470f88b8d  /tmp/payload.b64" | sha256sum -c -
-          echo "Decoding Base64..."
           base64 -d /tmp/payload.b64 > /tmp/apply.py.gz
-          echo "Testing gzip..."
           gzip -t /tmp/apply.py.gz
           gzip -dc /tmp/apply.py.gz > /tmp/apply.py
           echo "6fff09e1e2068015732e93213d32bf8ea84e97edecc6618adacc82d0d682652d  /tmp/apply.py" | sha256sum -c -

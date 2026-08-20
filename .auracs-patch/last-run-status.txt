@@ -1,5 +1,5 @@
-run_id=32403909841
-head_sha=d7f07213b7f548c820571e28011911a2c7b432a4
+run_id=32404037201
+head_sha=af79fccf3af6bbb67dd06c2913c895a9fdfcce70
 verify=success
 reconstruct=success
 apply=success
@@ -12,8 +12,8 @@ frontend_install=success
 frontend_audit=success
 frontend_tests=success
 frontend_lint=success
-frontend_build=failure
-publish=skipped
+frontend_build=success
+publish=failure
 
 ===== reconstruct.log =====
 From https://github.com/AlexLimaTKZ/AURACS
@@ -51,6 +51,7 @@ From https://github.com/AlexLimaTKZ/AURACS
  M web/src/lib/chapters.ts
  D web/src/lib/evaluator.ts
  M web/src/lib/store.ts
+ M web/tsconfig.json
 ?? web/src/game/worldGeometry.ts
 ?? web/src/lib/gameProgress.ts
 ?? web/src/lib/gameRules.ts
@@ -58,30 +59,30 @@ From https://github.com/AlexLimaTKZ/AURACS
 
 ===== backend-restore.log =====
   Determining projects to restore...
-  Restored /home/runner/work/AURACS/AURACS/App/App.csproj (in 93 ms).
-  Restored /home/runner/work/AURACS/AURACS/api/api.csproj (in 1.68 sec).
-  Restored /home/runner/work/AURACS/AURACS/api.Tests/api.Tests.csproj (in 1.68 sec).
+  Restored /home/runner/work/AURACS/AURACS/App/App.csproj (in 153 ms).
+  Restored /home/runner/work/AURACS/AURACS/api/api.csproj (in 1.92 sec).
+  Restored /home/runner/work/AURACS/AURACS/api.Tests/api.Tests.csproj (in 1.93 sec).
 
 ===== backend-build.log =====
-  api -> /home/runner/work/AURACS/AURACS/api/bin/Release/net8.0/api.dll
   App -> /home/runner/work/AURACS/AURACS/App/bin/Release/net9.0/App.dll
+  api -> /home/runner/work/AURACS/AURACS/api/bin/Release/net8.0/api.dll
   api.Tests -> /home/runner/work/AURACS/AURACS/api.Tests/bin/Release/net8.0/api.Tests.dll
 
 Build succeeded.
     0 Warning(s)
     0 Error(s)
 
-Time Elapsed 00:00:05.13
+Time Elapsed 00:00:07.14
 
 ===== backend-tests.log =====
 Test run for /home/runner/work/AURACS/AURACS/api.Tests/bin/Release/net8.0/api.Tests.dll (.NETCoreApp,Version=v8.0)
 A total of 1 test files matched the specified pattern.
 
-Passed!  - Failed:     0, Passed:    19, Skipped:     0, Total:    19, Duration: 135 ms - api.Tests.dll (net8.0)
+Passed!  - Failed:     0, Passed:    19, Skipped:     0, Total:    19, Duration: 137 ms - api.Tests.dll (net8.0)
 
 ===== frontend-install.log =====
 
-added 375 packages, and audited 376 packages in 11s
+added 375 packages, and audited 376 packages in 13s
 
 145 packages are looking for funding
   run `npm fund` for details
@@ -102,88 +103,88 @@ found 0 vulnerabilities
 > node --experimental-strip-types --test tests/*.test.ts
 
 TAP version 13
-# (node:2779) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/AURACS/AURACS/web/tests/gameRules.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:2797) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/AURACS/AURACS/web/tests/gameRules.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
 # To eliminate this warning, add "type": "module" to /home/runner/work/AURACS/AURACS/web/package.json.
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: preserves progress status from the API
 ok 1 - preserves progress status from the API
   ---
-  duration_ms: 0.990114
+  duration_ms: 1.172109
   type: 'test'
   ...
 # Subtest: supports the legacy challengePassed field
 ok 2 - supports the legacy challengePassed field
   ---
-  duration_ms: 0.186147
+  duration_ms: 0.169167
   type: 'test'
   ...
 # Subtest: a correct intermediate boss step does not cause damage
 ok 3 - a correct intermediate boss step does not cause damage
   ---
-  duration_ms: 0.165556
+  duration_ms: 0.205005
   type: 'test'
   ...
 # Subtest: invalid combat code causes damage
 ok 4 - invalid combat code causes damage
   ---
-  duration_ms: 0.13465
+  duration_ms: 0.165911
   type: 'test'
   ...
 # Subtest: non-combat failures do not invoke the combat damage system
 ok 5 - non-combat failures do not invoke the combat damage system
   ---
-  duration_ms: 0.232325
+  duration_ms: 0.284674
   type: 'test'
   ...
-# (node:2780) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/AURACS/AURACS/web/tests/progress.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:2798) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/AURACS/AURACS/web/tests/progress.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
 # To eliminate this warning, add "type": "module" to /home/runner/work/AURACS/AURACS/web/package.json.
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: resolves a saved Chapter 2 step without falling back to Chapter 1
 ok 6 - resolves a saved Chapter 2 step without falling back to Chapter 1
   ---
-  duration_ms: 1.158224
+  duration_ms: 1.518579
   type: 'test'
   ...
 # Subtest: falls back to the selected chapter initial step when its step is invalid
 ok 7 - falls back to the selected chapter initial step when its step is invalid
   ---
-  duration_ms: 0.191625
+  duration_ms: 0.190417
   type: 'test'
   ...
 # Subtest: falls back to Chapter 1 only when the chapter itself is invalid
 ok 8 - falls back to Chapter 1 only when the chapter itself is invalid
   ---
-  duration_ms: 0.186838
+  duration_ms: 0.208331
   type: 'test'
   ...
 # Subtest: step effect keys are chapter-aware
 ok 9 - step effect keys are chapter-aware
   ---
-  duration_ms: 0.212327
+  duration_ms: 0.184756
   type: 'test'
   ...
-# (node:2786) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/AURACS/AURACS/web/tests/worldGeometry.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:2804) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/AURACS/AURACS/web/tests/worldGeometry.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
 # To eliminate this warning, add "type": "module" to /home/runner/work/AURACS/AURACS/web/package.json.
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: keeps the player inside the Core while Sector B is locked
 ok 10 - keeps the player inside the Core while Sector B is locked
   ---
-  duration_ms: 1.170812
+  duration_ms: 1.255967
   type: 'test'
   ...
 # Subtest: allows the connector and Sector B after unlock
 ok 11 - allows the connector and Sector B after unlock
   ---
-  duration_ms: 0.191926
+  duration_ms: 0.218059
   type: 'test'
   ...
 # Subtest: blocks known machinery collision areas
 ok 12 - blocks known machinery collision areas
   ---
-  duration_ms: 0.267158
+  duration_ms: 0.247734
   type: 'test'
   ...
 1..12
@@ -194,7 +195,7 @@ ok 12 - blocks known machinery collision areas
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 144.250848
+# duration_ms 192.733975
 
 ===== frontend-lint.log =====
 
@@ -208,7 +209,7 @@ ok 12 - blocks known machinery collision areas
 > next build
 
 ▲ Next.js 16.3.1 (Turbopack)
-✓ Running next.config.ts took 24ms
+✓ Running next.config.ts took 26ms
 ⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
 Attention: Next.js now collects completely anonymous telemetry regarding usage.
 This information is used to shape Next.js' roadmap and prioritize features.
@@ -217,10 +218,52 @@ https://nextjs.org/telemetry
 
 
   Creating an optimized production build ...
-✓ Compiled successfully in 10.2s
+✓ Compiled successfully in 10.4s
   Running TypeScript ...
-tests/gameRules.test.ts(3,70): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
-tests/progress.test.ts(3,48): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
-tests/worldGeometry.test.ts(3,55): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
-Failed to type check.
+  Finished TypeScript in 4.3s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/4) ...
+  Generating static pages using 3 workers (1/4) 
+  Generating static pages using 3 workers (2/4) 
+  Generating static pages using 3 workers (3/4) 
+✓ Generating static pages using 3 workers (4/4) in 269ms
+  Finalizing page optimization ...
 
+Route (app)
+┌ ○ /
+└ ○ /_not-found
+
+
+○  (Static)  prerendered as static content
+
+
+===== publish.log =====
+ .github/workflows/apply-auracs-main-fixes.yml | 222 ------------
+ .github/workflows/ci.yml                      |   2 +
+ README.md                                     |  12 +-
+ api.Tests/SafeCodeEvaluatorTests.cs           |  91 +++++
+ api/ChallengeValidator.cs                     | 122 ++++++-
+ api/Program.cs                                | 164 +++++++--
+ api/SafeCodeEvaluator.cs                      | 243 ++++++++++---
+ package.json                                  |   2 +-
+ web/package.json                              |   3 +-
+ web/src/app/api/reset/route.ts                |  30 --
+ web/src/app/api/run/route.ts                  |  59 ----
+ web/src/app/page.tsx                          |  19 +-
+ web/src/components/GameWorld.tsx              |   6 +-
+ web/src/components/MainMenu.tsx               |  35 +-
+ web/src/components/ScreenShake.tsx            |  11 +-
+ web/src/game/createShipGame.ts                |  73 +---
+ web/src/game/worldGeometry.ts                 |  61 ++++
+ web/src/hooks/useGameEngine.ts                | 477 ++++++++++++++------------
+ web/src/lib/api.ts                            | 106 +++---
+ web/src/lib/chapters.ts                       |   5 +
+ web/src/lib/evaluator.ts                      | 420 -----------------------
+ web/src/lib/gameProgress.ts                   |  36 ++
+ web/src/lib/gameRules.ts                      |  24 ++
+ web/src/lib/store.ts                          |  97 ++++--
+ web/tests/gameRules.test.ts                   |  48 +++
+ web/tests/progress.test.ts                    |  46 +++
+ web/tests/worldGeometry.test.ts               |  18 +
+ web/tsconfig.json                             |   1 +
+ 28 files changed, 1224 insertions(+), 1209 deletions(-)

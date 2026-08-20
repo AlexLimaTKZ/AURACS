@@ -1,5 +1,5 @@
-run_id=32402073397
-head_sha=56d12a2a358e21b090ad2a749f656dcda7f84f13
+run_id=32402702301
+head_sha=741cd55e849deb7cbaf002a5d31c94b2a1061a02
 verify=success
 reconstruct=failure
 apply=skipped
@@ -21,6 +21,4 @@ publish=skipped
 From https://github.com/AlexLimaTKZ/AURACS
  * branch            automation/auracs-main-fixes -> FETCH_HEAD
 
-gzip: stdin: invalid compressed data--crc error
-
-gzip: stdin: invalid compressed data--length error
+gzip: /tmp/apply.py.gz: invalid compressed data--format violated

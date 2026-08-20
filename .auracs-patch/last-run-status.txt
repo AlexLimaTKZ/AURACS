@@ -1,5 +1,5 @@
-run_id=32403779322
-head_sha=84f85dd4278ca4de6fd8115260ba00afe62c9551
+run_id=32403909841
+head_sha=d7f07213b7f548c820571e28011911a2c7b432a4
 verify=success
 reconstruct=success
 apply=success
@@ -17,16 +17,15 @@ publish=skipped
 
 ===== reconstruct.log =====
 From https://github.com/AlexLimaTKZ/AURACS
- * branch            automation/auracs-main-fixes -> FETCH_HEAD
-Reading blob 7afe7928f973ef830ff32ffa0aa5b3bffe1ea052
-Reading blob 3ae1bb3a0a52c31884522b88ee77ceab867f11d8
-Reading blob 9b933f6391ab557be26ed97723a6196cea666933
-Reading blob 01339f50902a8aaf9d7d6316d97096ae1eec26c1
-Reading blob f1097c947a8de01679eb683ff9ded9cb117fd20e
-Reading blob 8fa5cb3cd955e6336256a42b7dfdae125b87be2e
-Reading blob ac6250fa7a991865eecd66a7502450fbc977c675
-Reading blob 56fb747637f25c548894317fbc49c06594065f90
-47556 /tmp/payload.b64
+ * branch            automation/auracs-payload-v2 -> FETCH_HEAD
+.auracs-patch/chunk00.txt: 7afe7928f973ef830ff32ffa0aa5b3bffe1ea052
+.auracs-patch/chunk01.txt: 3ae1bb3a0a52c31884522b88ee77ceab867f11d8
+.auracs-patch/chunk02.txt: 9b933f6391ab557be26ed97723a6196cea666933
+.auracs-patch/chunk03.txt: 01339f50902a8aaf9d7d6316d97096ae1eec26c1
+.auracs-patch/chunk04.txt: f1097c947a8de01679eb683ff9ded9cb117fd20e
+.auracs-patch/chunk05.txt: 8fa5cb3cd955e6336256a42b7dfdae125b87be2e
+.auracs-patch/chunk06.txt: ac6250fa7a991865eecd66a7502450fbc977c675
+.auracs-patch/chunk07.txt: 56fb747637f25c548894317fbc49c06594065f90
 /tmp/payload.b64: OK
 /tmp/apply.py: OK
 
@@ -59,30 +58,30 @@ Reading blob 56fb747637f25c548894317fbc49c06594065f90
 
 ===== backend-restore.log =====
   Determining projects to restore...
-  Restored /home/runner/work/AURACS/AURACS/App/App.csproj (in 124 ms).
-  Restored /home/runner/work/AURACS/AURACS/api/api.csproj (in 2.04 sec).
-  Restored /home/runner/work/AURACS/AURACS/api.Tests/api.Tests.csproj (in 2.05 sec).
+  Restored /home/runner/work/AURACS/AURACS/App/App.csproj (in 93 ms).
+  Restored /home/runner/work/AURACS/AURACS/api/api.csproj (in 1.68 sec).
+  Restored /home/runner/work/AURACS/AURACS/api.Tests/api.Tests.csproj (in 1.68 sec).
 
 ===== backend-build.log =====
-  App -> /home/runner/work/AURACS/AURACS/App/bin/Release/net9.0/App.dll
   api -> /home/runner/work/AURACS/AURACS/api/bin/Release/net8.0/api.dll
+  App -> /home/runner/work/AURACS/AURACS/App/bin/Release/net9.0/App.dll
   api.Tests -> /home/runner/work/AURACS/AURACS/api.Tests/bin/Release/net8.0/api.Tests.dll
 
 Build succeeded.
     0 Warning(s)
     0 Error(s)
 
-Time Elapsed 00:00:06.21
+Time Elapsed 00:00:05.13
 
 ===== backend-tests.log =====
 Test run for /home/runner/work/AURACS/AURACS/api.Tests/bin/Release/net8.0/api.Tests.dll (.NETCoreApp,Version=v8.0)
 A total of 1 test files matched the specified pattern.
 
-Passed!  - Failed:     0, Passed:    19, Skipped:     0, Total:    19, Duration: 136 ms - api.Tests.dll (net8.0)
+Passed!  - Failed:     0, Passed:    19, Skipped:     0, Total:    19, Duration: 135 ms - api.Tests.dll (net8.0)
 
 ===== frontend-install.log =====
 
-added 375 packages, and audited 376 packages in 13s
+added 375 packages, and audited 376 packages in 11s
 
 145 packages are looking for funding
   run `npm fund` for details
@@ -103,88 +102,88 @@ found 0 vulnerabilities
 > node --experimental-strip-types --test tests/*.test.ts
 
 TAP version 13
-# (node:2785) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/AURACS/AURACS/web/tests/gameRules.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:2779) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/AURACS/AURACS/web/tests/gameRules.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
 # To eliminate this warning, add "type": "module" to /home/runner/work/AURACS/AURACS/web/package.json.
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: preserves progress status from the API
 ok 1 - preserves progress status from the API
   ---
-  duration_ms: 1.364151
+  duration_ms: 0.990114
   type: 'test'
   ...
 # Subtest: supports the legacy challengePassed field
 ok 2 - supports the legacy challengePassed field
   ---
-  duration_ms: 0.214099
+  duration_ms: 0.186147
   type: 'test'
   ...
 # Subtest: a correct intermediate boss step does not cause damage
 ok 3 - a correct intermediate boss step does not cause damage
   ---
-  duration_ms: 0.283448
+  duration_ms: 0.165556
   type: 'test'
   ...
 # Subtest: invalid combat code causes damage
 ok 4 - invalid combat code causes damage
   ---
-  duration_ms: 0.209991
+  duration_ms: 0.13465
   type: 'test'
   ...
 # Subtest: non-combat failures do not invoke the combat damage system
 ok 5 - non-combat failures do not invoke the combat damage system
   ---
-  duration_ms: 0.320397
+  duration_ms: 0.232325
   type: 'test'
   ...
-# (node:2786) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/AURACS/AURACS/web/tests/progress.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:2780) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/AURACS/AURACS/web/tests/progress.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
 # To eliminate this warning, add "type": "module" to /home/runner/work/AURACS/AURACS/web/package.json.
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: resolves a saved Chapter 2 step without falling back to Chapter 1
 ok 6 - resolves a saved Chapter 2 step without falling back to Chapter 1
   ---
-  duration_ms: 1.422359
+  duration_ms: 1.158224
   type: 'test'
   ...
 # Subtest: falls back to the selected chapter initial step when its step is invalid
 ok 7 - falls back to the selected chapter initial step when its step is invalid
   ---
-  duration_ms: 0.17729
+  duration_ms: 0.191625
   type: 'test'
   ...
 # Subtest: falls back to Chapter 1 only when the chapter itself is invalid
 ok 8 - falls back to Chapter 1 only when the chapter itself is invalid
   ---
-  duration_ms: 0.165398
+  duration_ms: 0.186838
   type: 'test'
   ...
 # Subtest: step effect keys are chapter-aware
 ok 9 - step effect keys are chapter-aware
   ---
-  duration_ms: 0.164376
+  duration_ms: 0.212327
   type: 'test'
   ...
-# (node:2792) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/AURACS/AURACS/web/tests/worldGeometry.test.ts is not specified and it doesn't parse as CommonJS.
+# (node:2786) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/AURACS/AURACS/web/tests/worldGeometry.test.ts is not specified and it doesn't parse as CommonJS.
 # Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
 # To eliminate this warning, add "type": "module" to /home/runner/work/AURACS/AURACS/web/package.json.
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: keeps the player inside the Core while Sector B is locked
 ok 10 - keeps the player inside the Core while Sector B is locked
   ---
-  duration_ms: 2.19085
+  duration_ms: 1.170812
   type: 'test'
   ...
 # Subtest: allows the connector and Sector B after unlock
 ok 11 - allows the connector and Sector B after unlock
   ---
-  duration_ms: 0.216994
+  duration_ms: 0.191926
   type: 'test'
   ...
 # Subtest: blocks known machinery collision areas
 ok 12 - blocks known machinery collision areas
   ---
-  duration_ms: 0.202167
+  duration_ms: 0.267158
   type: 'test'
   ...
 1..12
@@ -195,7 +194,7 @@ ok 12 - blocks known machinery collision areas
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 157.425748
+# duration_ms 144.250848
 
 ===== frontend-lint.log =====
 
@@ -218,7 +217,7 @@ https://nextjs.org/telemetry
 
 
   Creating an optimized production build ...
-✓ Compiled successfully in 10.1s
+✓ Compiled successfully in 10.2s
   Running TypeScript ...
 tests/gameRules.test.ts(3,70): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
 tests/progress.test.ts(3,48): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.

@@ -77,6 +77,15 @@ jobs:
         run: |
           set -euo pipefail
           python /tmp/apply.py .
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("web/tsconfig.json")
+          text = path.read_text()
+          needle = '    "noEmit": true,\n'
+          if text.count(needle) != 1:
+              raise SystemExit("Unexpected web/tsconfig.json baseline")
+          path.write_text(text.replace(needle, needle + '    "allowImportingTsExtensions": true,\n'))
+          PY
           rm .github/workflows/apply-auracs-main-fixes.yml
           git status --short | tee /tmp/apply-status.log
           test -n "$(git status --short)"

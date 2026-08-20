@@ -23,8 +23,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "0f578ff0ab0c926ff565688b8aee81e647800bb1"
-          test "$(git diff-tree --no-commit-id --name-only -r HEAD)" = ".github/workflows/apply-auracs-main-fixes.yml"
+          git merge-base --is-ancestor "0f578ff0ab0c926ff565688b8aee81e647800bb1" HEAD
+          test "$(git diff --name-only 0f578ff0ab0c926ff565688b8aee81e647800bb1..HEAD)" = ".github/workflows/apply-auracs-main-fixes.yml"
 
       - name: Reconstruct applicator from staging branch
         shell: bash

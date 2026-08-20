@@ -1,4 +1,5 @@
 name: Apply AURACS main fixes
+# payload verified against local SHA-256 before this run
 
 on:
   push:

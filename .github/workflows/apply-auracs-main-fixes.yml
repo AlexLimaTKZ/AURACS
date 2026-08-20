@@ -20,70 +20,52 @@ jobs:
           fetch-depth: 0
 
       - name: Verify reviewed base
-        id: verify
         shell: bash
         run: |
           set -euo pipefail
-          exec > >(tee /tmp/verify.log) 2>&1
           git merge-base --is-ancestor "0f578ff0ab0c926ff565688b8aee81e647800bb1" HEAD
           test "$(git diff --name-only 0f578ff0ab0c926ff565688b8aee81e647800bb1..HEAD)" = ".github/workflows/apply-auracs-main-fixes.yml"
 
-      - name: Reconstruct and verify applicator
-        id: reconstruct
+      - name: Reconstruct and verify immutable applicator
         shell: bash
         run: |
           set -euo pipefail
-          exec > >(tee /tmp/reconstruct.log) 2>&1
+          PAYLOAD_SHA="a141ed72a3ad1f2ed589918c06c22049bdb59bbb"
           git fetch origin automation/auracs-main-fixes
           : > /tmp/payload.b64
           for i in 00 01 02 03 04 05 06 07; do
-            git show "origin/automation/auracs-main-fixes:.auracs-patch/chunk${i}.txt" >> /tmp/payload.b64
+            git show "${PAYLOAD_SHA}:.auracs-patch/chunk${i}.txt" >> /tmp/payload.b64
           done
           base64 -d /tmp/payload.b64 > /tmp/apply.py.gz
           gzip -t /tmp/apply.py.gz
           gzip -dc /tmp/apply.py.gz > /tmp/apply.py
+          echo "24d3304d9f11acc580196645c0176804492d244f2278bb66910a0144db08d6a2  /tmp/apply.py" | sha256sum -c -
           python -m py_compile /tmp/apply.py
 
       - name: Apply corrections and remove temporary workflow
-        id: apply
         shell: bash
         run: |
           set -euo pipefail
-          exec > >(tee /tmp/apply.log) 2>&1
           python /tmp/apply.py .
           rm .github/workflows/apply-auracs-main-fixes.yml
           git status --short
           test -n "$(git status --short)"
 
       - name: Setup .NET
-        id: setup_dotnet
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
       - name: Backend restore
-        id: backend_restore
-        shell: bash
-        run: |
-          set -o pipefail
-          dotnet restore AURACS.sln 2>&1 | tee /tmp/backend-restore.log
+        run: dotnet restore AURACS.sln
 
       - name: Backend build
-        id: backend_build
-        shell: bash
-        run: |
-          set -o pipefail
-          dotnet build AURACS.sln --configuration Release --no-restore 2>&1 | tee /tmp/backend-build.log
+        run: dotnet build AURACS.sln --configuration Release --no-restore
 
       - name: Backend tests
-        id: backend_tests
-        shell: bash
-        run: |
-          set -o pipefail
-          dotnet test api.Tests/api.Tests.csproj --configuration Release --no-build 2>&1 | tee /tmp/backend-tests.log
+        run: dotnet test api.Tests/api.Tests.csproj --configuration Release --no-build
 
       - name: Setup Node
-        id: setup_node
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -91,53 +73,31 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Frontend install
-        id: frontend_install
         working-directory: web
-        shell: bash
-        run: |
-          set -o pipefail
-          npm ci 2>&1 | tee /tmp/frontend-install.log
+        run: npm ci
 
       - name: Frontend audit
-        id: frontend_audit
         working-directory: web
-        shell: bash
-        run: |
-          set -o pipefail
-          npm audit --omit=dev --audit-level=high 2>&1 | tee /tmp/frontend-audit.log
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Frontend tests
-        id: frontend_tests
         working-directory: web
-        shell: bash
-        run: |
-          set -o pipefail
-          npm test 2>&1 | tee /tmp/frontend-tests.log
+        run: npm test
 
       - name: Frontend lint
-        id: frontend_lint
         working-directory: web
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run lint 2>&1 | tee /tmp/frontend-lint.log
+        run: npm run lint
 
       - name: Frontend build
-        id: frontend_build
         working-directory: web
-        shell: bash
         env:
           NEXT_PUBLIC_API_URL: http://localhost:5000
-        run: |
-          set -o pipefail
-          npm run build 2>&1 | tee /tmp/frontend-build.log
+        run: npm run build
 
       - name: Commit and push validated corrections
-        id: publish
         shell: bash
         run: |
           set -euo pipefail
-          exec > >(tee /tmp/publish.log) 2>&1
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- \
@@ -172,45 +132,3 @@ jobs:
           git diff --cached --stat
           git commit -m "fix: harden evaluator and chapter 2 progression"
           git push origin HEAD:main
-          git push origin --delete automation/auracs-main-fixes || true
-
-      - name: Record migration failure on staging branch
-        if: failure()
-        shell: bash
-        run: |
-          set -euo pipefail
-          STATUS=/tmp/last-run-status.txt
-          {
-            echo "run_id=${GITHUB_RUN_ID}"
-            echo "head_sha=${GITHUB_SHA}"
-            echo "verify=${{ steps.verify.outcome }}"
-            echo "reconstruct=${{ steps.reconstruct.outcome }}"
-            echo "apply=${{ steps.apply.outcome }}"
-            echo "setup_dotnet=${{ steps.setup_dotnet.outcome }}"
-            echo "backend_restore=${{ steps.backend_restore.outcome }}"
-            echo "backend_build=${{ steps.backend_build.outcome }}"
-            echo "backend_tests=${{ steps.backend_tests.outcome }}"
-            echo "setup_node=${{ steps.setup_node.outcome }}"
-            echo "frontend_install=${{ steps.frontend_install.outcome }}"
-            echo "frontend_audit=${{ steps.frontend_audit.outcome }}"
-            echo "frontend_tests=${{ steps.frontend_tests.outcome }}"
-            echo "frontend_lint=${{ steps.frontend_lint.outcome }}"
-            echo "frontend_build=${{ steps.frontend_build.outcome }}"
-            echo "publish=${{ steps.publish.outcome }}"
-            for log in /tmp/verify.log /tmp/reconstruct.log /tmp/apply.log /tmp/backend-restore.log /tmp/backend-build.log /tmp/backend-tests.log /tmp/frontend-install.log /tmp/frontend-audit.log /tmp/frontend-tests.log /tmp/frontend-lint.log /tmp/frontend-build.log /tmp/publish.log; do
-              if [ -f "$log" ]; then
-                echo
-                echo "===== $(basename "$log") ====="
-                tail -n 120 "$log"
-              fi
-            done
-          } > "$STATUS"
-          git fetch origin automation/auracs-main-fixes
-          git worktree add -B automation/auracs-main-fixes /tmp/auracs-staging origin/automation/auracs-main-fixes
-          cp "$STATUS" /tmp/auracs-staging/.auracs-patch/last-run-status.txt
-          cd /tmp/auracs-staging
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- .auracs-patch/last-run-status.txt
-          git commit -m "chore: record failed AURACS migration ${GITHUB_RUN_ID}" || true
-          git push origin HEAD:automation/auracs-main-fixes

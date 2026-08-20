@@ -11,6 +11,7 @@ export interface ChapterStep {
   nextStepId?: string;
   choices?: { label: string; nextStepId: string }[];
   achievementId?: string;
+  autoAdvance?: boolean;
 }
 
 export interface Chapter {
@@ -33,12 +34,14 @@ export const CHAPTER_1: Chapter = {
         "Sua cabeça dói. O último som de que se lembra é o de metal se contorcendo durante um salto hiperespacial turbulento."
       ],
       auraMessage: "Kael, que bom que você acordou. Tivemos... um problema. A energia primária está em nível crítico.",
+      autoAdvance: true,
       nextStepId: "step-1-b"
     },
     "step-1-b": {
       id: "step-1-b",
       narrative: [],
       auraMessage: "Meus sistemas de controle direto foram danificados. Para interagir comigo e com a nave, você precisará usar o terminal de comando com a sintaxe C#.",
+      autoAdvance: true,
       nextStepId: "step-2"
     },
     "step-2": {
@@ -86,6 +89,7 @@ export const CHAPTER_1: Chapter = {
       auraMessage: "Boa escolha, Kael. Os escudos vão nos proteger de detritos. Mas precisamos encontrar uma fonte de oxigênio em breve. Vamos continuar.",
       achievementId: "decision_maker",
       onSuccess: (state) => state.updateEnergy(10),
+      autoAdvance: true,
       nextStepId: "step-5"
     },
     "step-4-life": {
@@ -97,6 +101,7 @@ export const CHAPTER_1: Chapter = {
       auraMessage: "Sábia decisão para a sobrevivência imediata. O ar está estabilizado. Mas estamos sem proteção externa. Vamos continuar com cautela.",
       achievementId: "decision_maker",
       onSuccess: (state) => state.updateEnergy(5),
+      autoAdvance: true,
       nextStepId: "step-5"
     },
     "step-5": {

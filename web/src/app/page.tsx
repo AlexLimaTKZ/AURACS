@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Gamepad2,
@@ -23,7 +23,7 @@ import { GameWorld } from "@/components/GameWorld";
 import { KatanaCinematicModal } from "@/components/KatanaCinematicModal";
 import { Hud } from "@/components/Hud";
 import { MainMenu } from "@/components/MainMenu";
-import { ScreenShake } from "@/components/ScreenShake";
+import { ScreenShake, type ScreenShakeRef } from "@/components/ScreenShake";
 import { Starfield } from "@/components/Starfield";
 import { Terminal } from "@/components/Terminal";
 import { useGameEngine } from "@/hooks/useGameEngine";
@@ -35,6 +35,7 @@ export default function Home() {
   const [showChaptersModal, setShowChaptersModal] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [victoryDismissed, setVictoryDismissed] = useState(false);
+  const screenShakeRef = useRef<ScreenShakeRef>(null);
 
   const lastTransmission = useMemo(() => {
     const relevant = [...game.logs]
@@ -57,6 +58,12 @@ export default function Home() {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [terminalOpen]);
+
+  useEffect(() => {
+    if (game.alertFlash === "red") {
+      screenShakeRef.current?.shake("medium");
+    }
+  }, [game.alertFlash]);
 
   // 1. TELA DE SAÍDA / LOGOUT SCI-FI
   if (viewMode === "exit") {
@@ -104,10 +111,15 @@ export default function Home() {
         <Starfield />
         <MainMenu
           hasSave={hasSavedProgress}
+          savedChapterId={game.currentChapterId}
           savedStepId={game.currentStepId}
           savedEnergy={game.energy}
           unlockedAchievementsCount={game.unlockedAchievements.length}
           totalAchievementsCount={ACHIEVEMENTS.length}
+          screenShakeEnabled={game.screenShakeEnabled}
+          scanlinesEnabled={game.scanlinesEnabled}
+          onScreenShakeChange={game.setScreenShakeEnabled}
+          onScanlinesChange={game.setScanlinesEnabled}
           onNewGame={() => {
             game.startNewGame();
             setViewMode("game");
@@ -149,7 +161,7 @@ export default function Home() {
 
   // 3. TELA DE JOGABILIDADE (GAMEPLAY)
   return (
-    <ScreenShake>
+    <ScreenShake ref={screenShakeRef} enabled={game.screenShakeEnabled}>
       <main className="relative min-h-screen overflow-hidden bg-[#02050a] text-white">
         <Starfield />
         <div className={`pointer-events-none absolute inset-0 transition duration-700 ${
@@ -264,6 +276,7 @@ export default function Home() {
                 stepId={game.currentStep.id}
                 chapterId={game.currentChapterId}
                 inventory={game.inventory}
+                scanlinesEnabled={game.scanlinesEnabled}
                 terminalOpen={terminalOpen}
                 onTerminalInteract={() => setTerminalOpen(true)}
                 onOpenChest={game.openChest}

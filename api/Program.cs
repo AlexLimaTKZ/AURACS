@@ -2,7 +2,16 @@ using System.Collections.Concurrent;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 
+const int MaxSessions = 2_000;
+const int MaxCodeLength = 2_000;
+const long MaxRequestBodyBytes = 8 * 1024;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = MaxRequestBodyBytes;
+});
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
@@ -38,10 +47,9 @@ var app = builder.Build();
 app.UseCors("Frontend");
 app.UseRateLimiter();
 
-var sessions = new ConcurrentDictionary<string, CodeSession>();
+var sessions = new ConcurrentDictionary<string, CodeSession>(StringComparer.Ordinal);
 var sessionTtl = TimeSpan.FromHours(2);
-const int MaxSessions = 2_000;
-const int MaxCodeLength = 2_000;
+var sessionCreationGate = new SemaphoreSlim(1, 1);
 
 void CleanupExpiredSessions()
 {
@@ -55,22 +63,73 @@ void CleanupExpiredSessions()
     }
 }
 
+static bool IsValidSessionId(string? sessionId) =>
+    !string.IsNullOrWhiteSpace(sessionId) && Guid.TryParse(sessionId, out _);
+
+static void SeedSessionForChallenge(CodeSession session, string? challengeId)
+{
+    if (challengeId is "step-3" or "step-4" or "step-4-shields" or "step-4-life" or "step-5")
+    {
+        session.Variables.TryAdd("nivelDeEnergia", SafeValue.FromInt(25));
+    }
+
+    if (challengeId == "ch2-monster-3")
+    {
+        session.Variables.TryAdd("escudo", SafeValue.FromBool(true));
+    }
+}
+
+async Task<CodeSession?> GetOrCreateSessionAsync(
+    string sessionId,
+    string? challengeId,
+    CancellationToken cancellationToken)
+{
+    if (sessions.TryGetValue(sessionId, out var existing))
+    {
+        return existing;
+    }
+
+    await sessionCreationGate.WaitAsync(cancellationToken);
+    try
+    {
+        if (sessions.TryGetValue(sessionId, out existing))
+        {
+            return existing;
+        }
+
+        CleanupExpiredSessions();
+        if (sessions.Count >= MaxSessions)
+        {
+            return null;
+        }
+
+        var created = new CodeSession();
+        SeedSessionForChallenge(created, challengeId);
+        sessions[sessionId] = created;
+        return created;
+    }
+    finally
+    {
+        sessionCreationGate.Release();
+    }
+}
+
 app.MapGet("/health", () => Results.Ok(new
 {
     status = "ok",
     activeSessions = sessions.Count
 }));
 
-app.MapPost("/run", ([FromBody] CodeRequest request) =>
+app.MapPost("/run", async ([FromBody] CodeRequest request, HttpContext httpContext) =>
 {
     CleanupExpiredSessions();
 
-    if (string.IsNullOrWhiteSpace(request.SessionId))
+    if (!IsValidSessionId(request.SessionId))
     {
         return Results.BadRequest(new CodeResponse
         {
             Success = false,
-            Logs = ["[ERRO]: sessionId é obrigatório."]
+            Logs = ["[ERRO]: sessionId precisa ser um UUID válido."]
         });
     }
 
@@ -92,55 +151,66 @@ app.MapPost("/run", ([FromBody] CodeRequest request) =>
         });
     }
 
-    if (!sessions.TryGetValue(request.SessionId, out var session))
+    var session = await GetOrCreateSessionAsync(
+        request.SessionId!,
+        request.ChallengeId,
+        httpContext.RequestAborted);
+
+    if (session is null)
     {
-        if (sessions.Count >= MaxSessions)
-        {
-            CleanupExpiredSessions();
-            if (sessions.Count >= MaxSessions)
+        return Results.Json(
+            new CodeResponse
             {
-                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
-            }
+                Success = false,
+                Logs = ["[ERRO]: Limite temporário de sessões atingido. Tente novamente em instantes."]
+            },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    await session.Gate.WaitAsync(httpContext.RequestAborted);
+    try
+    {
+        session.LastAccess = DateTimeOffset.UtcNow;
+
+        var result = SafeCodeEvaluator.Evaluate(request.Code, session);
+        if (!result.Success)
+        {
+            return Results.Ok(new CodeResponse
+            {
+                Success = false,
+                Logs = result.Logs,
+                ChallengeStatus = "failed"
+            });
         }
 
-        session = new CodeSession();
-        sessions[request.SessionId] = session;
-    }
+        var challenge = ChallengeValidator.Validate(request.ChallengeId, session, result);
 
-    session.LastAccess = DateTimeOffset.UtcNow;
-
-    var result = SafeCodeEvaluator.Evaluate(request.Code, session);
-    if (!result.Success)
-    {
         return Results.Ok(new CodeResponse
         {
-            Success = false,
-            Logs = result.Logs
+            Success = true,
+            Logs = result.Logs,
+            ReturnValue = result.ReturnValue,
+            ChallengePassed = challenge.Passed,
+            ChallengeStatus = challenge.State.ToString().ToLowerInvariant(),
+            Feedback = challenge.Feedback,
+            ChoiceValue = challenge.ChoiceValue
         });
     }
-
-    var challenge = ChallengeValidator.Validate(request.ChallengeId, session, result);
-
-    return Results.Ok(new CodeResponse
+    finally
     {
-        Success = true,
-        Logs = result.Logs,
-        ReturnValue = result.ReturnValue,
-        ChallengePassed = challenge.Passed,
-        Feedback = challenge.Feedback,
-        ChoiceValue = challenge.ChoiceValue
-    });
+        session.Gate.Release();
+    }
 })
 .RequireRateLimiting("code-runner");
 
 app.MapPost("/reset", ([FromBody] ResetRequest request) =>
 {
-    if (string.IsNullOrWhiteSpace(request.SessionId))
+    if (!IsValidSessionId(request.SessionId))
     {
-        return Results.BadRequest(new { Success = false, Message = "sessionId é obrigatório." });
+        return Results.BadRequest(new { Success = false, Message = "sessionId precisa ser um UUID válido." });
     }
 
-    var removed = sessions.TryRemove(request.SessionId, out _);
+    var removed = sessions.TryRemove(request.SessionId!, out _);
     return Results.Ok(new
     {
         Success = true,
@@ -170,12 +240,32 @@ public sealed class CodeResponse
     public string[] Logs { get; set; } = [];
     public string? ReturnValue { get; set; }
     public bool ChallengePassed { get; set; }
+    public string ChallengeStatus { get; set; } = "failed";
     public string? Feedback { get; set; }
     public int? ChoiceValue { get; set; }
 }
 
 public sealed class CodeSession
 {
-    public Dictionary<string, SafeValue> Variables { get; } = new(StringComparer.Ordinal);
+    public Dictionary<string, SafeValue> Variables { get; private set; }
     public DateTimeOffset LastAccess { get; set; } = DateTimeOffset.UtcNow;
+    public SemaphoreSlim Gate { get; } = new(1, 1);
+
+    public CodeSession()
+        : this(new Dictionary<string, SafeValue>(StringComparer.Ordinal))
+    {
+    }
+
+    private CodeSession(Dictionary<string, SafeValue> variables)
+    {
+        Variables = variables;
+    }
+
+    internal CodeSession CreateWorkingCopy() =>
+        new(new Dictionary<string, SafeValue>(Variables, StringComparer.Ordinal));
+
+    internal void CommitFrom(CodeSession source)
+    {
+        Variables = new Dictionary<string, SafeValue>(source.Variables, StringComparer.Ordinal);
+    }
 }

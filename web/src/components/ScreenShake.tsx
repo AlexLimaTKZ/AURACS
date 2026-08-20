@@ -10,15 +10,18 @@ export interface ScreenShakeRef {
 
 interface ScreenShakeProps {
   children: ReactNode;
+  enabled?: boolean;
 }
 
 export const ScreenShake = forwardRef<ScreenShakeRef, ScreenShakeProps>(
-  ({ children }, ref) => {
+  ({ children, enabled = true }, ref) => {
     const controls = useAnimation();
     const pulseControls = useAnimation();
 
     const shake = useCallback(
       async (intensity: "light" | "medium" | "heavy" = "medium") => {
+        if (!enabled) return;
+
         const amplitudes = { light: 2, medium: 4, heavy: 8 };
         const amplitude = amplitudes[intensity];
         const duration = intensity === "heavy" ? 0.08 : 0.05;
@@ -29,15 +32,17 @@ export const ScreenShake = forwardRef<ScreenShakeRef, ScreenShakeProps>(
           transition: { duration: duration * 7, ease: "easeOut" },
         });
       },
-      [controls]
+      [controls, enabled]
     );
 
     const pulse = useCallback(async () => {
+      if (!enabled) return;
+
       await pulseControls.start({
         opacity: [0, 1, 0],
         transition: { duration: 0.6, ease: "easeOut" },
       });
-    }, [pulseControls]);
+    }, [enabled, pulseControls]);
 
     useImperativeHandle(ref, () => ({ shake, pulse }), [shake, pulse]);
 

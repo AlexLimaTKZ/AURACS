@@ -1,7 +1,16 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export interface GameState {
+function createSessionId(): string {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  const suffix = Date.now().toString(16).padStart(12, "0").slice(-12);
+  return `00000000-0000-4000-8000-${suffix}`;
+}
+
+interface ProgressState {
   energy: number;
   integrity: number;
   inventory: string[];
@@ -10,34 +19,50 @@ export interface GameState {
   unlockedChapters: string[];
   unlockedAchievements: string[];
   consecutiveSuccesses: number;
+  codeSessionId: string;
+  appliedStepEffects: string[];
+}
+
+function createInitialProgress(): ProgressState {
+  return {
+    energy: 100,
+    integrity: 100,
+    inventory: [],
+    currentChapterId: "chapter-1",
+    currentStepId: "step-1",
+    unlockedChapters: ["chapter-1"],
+    unlockedAchievements: [],
+    consecutiveSuccesses: 0,
+    codeSessionId: createSessionId(),
+    appliedStepEffects: [],
+  };
+}
+
+export interface GameState extends ProgressState {
+  screenShakeEnabled: boolean;
+  scanlinesEnabled: boolean;
   updateEnergy: (amount: number) => void;
   addItem: (item: string) => void;
-  setChapter: (chapterId: string) => void;
-  setStep: (stepId: string) => void;
+  setProgress: (chapterId: string, stepId: string) => void;
   unlockChapter: (chapterId: string) => void;
   unlockAchievement: (id: string) => void;
   setConsecutiveSuccesses: (n: number) => void;
+  markStepEffectApplied: (key: string) => void;
+  rotateCodeSessionId: () => void;
+  setScreenShakeEnabled: (enabled: boolean) => void;
+  setScanlinesEnabled: (enabled: boolean) => void;
   resetAll: () => void;
-  resetChapter: () => void;
+  resetChapter: (chapterId: string, initialStepId: string) => void;
   _hasHydrated: boolean;
   setHasHydrated: (val: boolean) => void;
 }
 
-const INITIAL_STATE = {
-  energy: 100,
-  integrity: 100,
-  inventory: [] as string[],
-  currentChapterId: "chapter-1",
-  currentStepId: "step-1",
-  unlockedChapters: ["chapter-1"] as string[],
-  unlockedAchievements: [] as string[],
-  consecutiveSuccesses: 0,
-};
-
 export const useGameStore = create<GameState>()(
   persist(
     (set) => ({
-      ...INITIAL_STATE,
+      ...createInitialProgress(),
+      screenShakeEnabled: true,
+      scanlinesEnabled: true,
       _hasHydrated: false,
 
       updateEnergy: (amount) =>
@@ -47,11 +72,11 @@ export const useGameStore = create<GameState>()(
 
       addItem: (item) =>
         set((state) => ({
-          inventory: [...state.inventory, item],
+          inventory: state.inventory.includes(item) ? state.inventory : [...state.inventory, item],
         })),
 
-      setChapter: (id) => set({ currentChapterId: id }),
-      setStep: (stepId) => set({ currentStepId: stepId }),
+      setProgress: (chapterId, stepId) =>
+        set({ currentChapterId: chapterId, currentStepId: stepId }),
 
       unlockChapter: (id) =>
         set((state) => ({
@@ -68,14 +93,38 @@ export const useGameStore = create<GameState>()(
         })),
 
       setConsecutiveSuccesses: (n) => set({ consecutiveSuccesses: n }),
-      resetAll: () => set({ ...INITIAL_STATE }),
-      resetChapter: () =>
-        set({
+
+      markStepEffectApplied: (key) =>
+        set((state) => ({
+          appliedStepEffects: state.appliedStepEffects.includes(key)
+            ? state.appliedStepEffects
+            : [...state.appliedStepEffects, key],
+        })),
+
+      rotateCodeSessionId: () => set({ codeSessionId: createSessionId() }),
+      setScreenShakeEnabled: (enabled) => set({ screenShakeEnabled: enabled }),
+      setScanlinesEnabled: (enabled) => set({ scanlinesEnabled: enabled }),
+
+      resetAll: () =>
+        set((state) => ({
+          ...createInitialProgress(),
+          screenShakeEnabled: state.screenShakeEnabled,
+          scanlinesEnabled: state.scanlinesEnabled,
+        })),
+
+      resetChapter: (chapterId, initialStepId) =>
+        set((state) => ({
           energy: 100,
           integrity: 100,
-          currentStepId: "step-1",
+          currentChapterId: chapterId,
+          currentStepId: initialStepId,
           consecutiveSuccesses: 0,
-        }),
+          codeSessionId: createSessionId(),
+          appliedStepEffects: state.appliedStepEffects.filter(
+            (key) => !key.startsWith(`${chapterId}:`)
+          ),
+        })),
+
       setHasHydrated: (val) => set({ _hasHydrated: val }),
     }),
     {

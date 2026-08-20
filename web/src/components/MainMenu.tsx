@@ -21,14 +21,19 @@ import {
 } from "lucide-react";
 import { Aura } from "./Aura";
 import { useAudio } from "./AudioProvider";
-import { CHAPTER_1 } from "@/lib/chapters";
+import { ALL_CHAPTERS, CHAPTER_1 } from "@/lib/chapters";
 
 interface MainMenuProps {
   hasSave: boolean;
+  savedChapterId: string;
   savedStepId: string;
   savedEnergy: number;
   unlockedAchievementsCount: number;
   totalAchievementsCount: number;
+  screenShakeEnabled: boolean;
+  scanlinesEnabled: boolean;
+  onScreenShakeChange: (enabled: boolean) => void;
+  onScanlinesChange: (enabled: boolean) => void;
   onNewGame: () => void;
   onContinue: () => void;
   onOpenChapters: () => void;
@@ -39,10 +44,15 @@ interface MainMenuProps {
 
 export function MainMenu({
   hasSave,
+  savedChapterId,
   savedStepId,
   savedEnergy,
   unlockedAchievementsCount,
   totalAchievementsCount,
+  screenShakeEnabled,
+  scanlinesEnabled,
+  onScreenShakeChange,
+  onScanlinesChange,
   onNewGame,
   onContinue,
   onOpenChapters,
@@ -54,11 +64,12 @@ export function MainMenu({
   const [showSettings, setShowSettings] = useState(false);
   const [showConfirmNewGame, setShowConfirmNewGame] = useState(false);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
-  const [screenShakeEnabled, setScreenShakeEnabled] = useState(true);
-  const [scanlinesEnabled, setScanlinesEnabled] = useState(true);
 
-  const stepInfo = CHAPTER_1.steps[savedStepId];
-  const stepName = stepInfo ? `Missão ${savedStepId.replace(/^step-/, "").toUpperCase()}` : savedStepId;
+  const savedChapter = ALL_CHAPTERS[savedChapterId] ?? CHAPTER_1;
+  const stepInfo = savedChapter.steps[savedStepId];
+  const stepName = stepInfo ? `Missão ${savedStepId.replace(/^(step-|ch2-)/, "").toUpperCase()}` : savedStepId;
+  const chapterNumber = savedChapter.id === "chapter-2" ? 2 : 1;
+  const deckName = savedChapter.id === "chapter-2" ? "Deck 02 · Quarentena" : "Deck 01 · Nave Nebulosa";
 
   const handleButtonClick = (action: () => void) => {
     playSfx("typing");
@@ -128,10 +139,10 @@ export function MainMenu({
                 </span>
               </div>
               <p className="mt-1.5 font-semibold text-white/90 text-sm">
-                Capítulo 1 · {stepName}
+                Capítulo {chapterNumber} · {stepName}
               </p>
               <div className="mt-2 flex items-center justify-between text-[11px] text-white/40">
-                <span>Deck 01 · Nave Nebulosa</span>
+                <span>{deckName}</span>
                 <span className="flex items-center gap-1 text-amber-400/90 font-mono">
                   <Trophy className="h-3 w-3" />
                   {unlockedAchievementsCount}/{totalAchievementsCount} Conquistas
@@ -285,7 +296,9 @@ export function MainMenu({
               <div className="absolute inset-0 bg-gradient-to-t from-[#040d1a] via-[#040d1a]/30 to-transparent" />
               
               {/* Efeito de Scanlines sutil */}
-              <div className="pointer-events-none absolute inset-0 opacity-15 [background-image:repeating-linear-gradient(0deg,transparent,transparent_2px,#000_3px)]" />
+              {scanlinesEnabled && (
+                <div className="pointer-events-none absolute inset-0 opacity-15 [background-image:repeating-linear-gradient(0deg,transparent,transparent_2px,#000_3px)]" />
+              )}
 
               {/* Tag de identificação no topo */}
               <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
@@ -426,7 +439,7 @@ export function MainMenu({
                       <span className="text-xs text-white/80">Tremor de Tela (Screen Shake)</span>
                       <button
                         type="button"
-                        onClick={() => setScreenShakeEnabled((prev) => !prev)}
+                        onClick={() => onScreenShakeChange(!screenShakeEnabled)}
                         className={`rounded-lg px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider transition ${
                           screenShakeEnabled
                             ? "border border-emerald-500/30 bg-emerald-500/20 text-emerald-300"
@@ -441,7 +454,7 @@ export function MainMenu({
                       <span className="text-xs text-white/80">Linhas de Scanline (CRT)</span>
                       <button
                         type="button"
-                        onClick={() => setScanlinesEnabled((prev) => !prev)}
+                        onClick={() => onScanlinesChange(!scanlinesEnabled)}
                         className={`rounded-lg px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider transition ${
                           scanlinesEnabled
                             ? "border border-emerald-500/30 bg-emerald-500/20 text-emerald-300"
@@ -506,7 +519,7 @@ export function MainMenu({
               </h3>
               <p className="mt-2 text-xs leading-relaxed text-slate-300">
                 Você já possui um save no{" "}
-                <span className="font-semibold text-white">Capítulo 1 ({stepName})</span>. Iniciar um novo jogo redefinirá a posição e a energia para o início.
+                <span className="font-semibold text-white">Capítulo {chapterNumber} ({stepName})</span>. Iniciar um novo jogo redefinirá a posição e a energia para o início.
               </p>
               <div className="mt-6 flex items-center justify-end gap-2.5">
                 <button

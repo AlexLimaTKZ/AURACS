@@ -9,6 +9,7 @@ interface GameWorldProps {
   terminalOpen: boolean;
   chapterId?: string;
   inventory?: string[];
+  scanlinesEnabled?: boolean;
   onTerminalInteract: () => void;
   onOpenChest?: () => void;
 }
@@ -28,6 +29,7 @@ export function GameWorld({
   terminalOpen,
   chapterId = "chapter-1",
   inventory = [],
+  scanlinesEnabled = true,
   onTerminalInteract,
   onOpenChest,
 }: GameWorldProps) {
@@ -100,7 +102,9 @@ export function GameWorld({
       <div ref={mountRef} className="h-full w-full [&>canvas]:!h-full [&>canvas]:!w-full" />
 
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_0%,transparent_92%,rgba(0,0,0,0.2)_100%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:repeating-linear-gradient(0deg,transparent,transparent_2px,#fff_3px)]" />
+      {scanlinesEnabled && (
+        <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:repeating-linear-gradient(0deg,transparent,transparent_2px,#fff_3px)]" />
+      )}
 
       <div className="absolute bottom-4 left-4 grid grid-cols-3 gap-1.5 md:hidden">
         <div />

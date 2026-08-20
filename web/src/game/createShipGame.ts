@@ -6,6 +6,10 @@ import {
   updateVisorLightCone,
   type FacingDirection,
 } from "@/game/kaelSprite";
+import {
+  isBlockedByShipGeometry,
+  isInsideShip as isInsideShipGeometry,
+} from "@/game/worldGeometry";
 
 export interface ShipGameSyncState {
   energy: number;
@@ -1160,76 +1164,13 @@ class NebulosaScene extends Phaser.Scene {
     return !["step-1", "step-1-b", "step-2", "step-3"].includes(stepId);
   }
 
-  // --- LIMITAÇÃO RIGOROSA DO JOGADOR DENTRO DA NAVE ---
+  // Geometria extraída para um módulo puro e testável.
   private isInsideShip(x: number, y: number): boolean {
-    const pWidth = 10;
-    const pHeight = 12;
-
-    // 1. Sala Core (x: 60 até 870, y: 190 até 435)
-    const inCore = (
-      x - pWidth >= 60 &&
-      x + pWidth <= 875 &&
-      y - pHeight >= 190 &&
-      y + pHeight <= 435
-    );
-
-    // 2. Corredor / Conector (x: 860 até 1010, y: 205 até 425)
-    const inConnector = (
-      x - pWidth >= 855 &&
-      x + pWidth <= 1015 &&
-      y - pHeight >= 205 &&
-      y + pHeight <= 425
-    );
-
-    // 3. Sala Setor B (x: 1000 até 1820, y: 190 até 435)
-    const inSectorB = (
-      x - pWidth >= 995 &&
-      x + pWidth <= 1820 &&
-      y - pHeight >= 190 &&
-      y + pHeight <= 435
-    );
-
-    // Se o Setor B ainda estiver bloqueado, Kael não pode passar do ponto x = 865
-    if (!this.sectorBUnlocked) {
-      if (x + pWidth > 865) return false;
-      return inCore;
-    }
-
-    return inCore || inConnector || inSectorB;
+    return isInsideShipGeometry(x, y, this.sectorBUnlocked);
   }
 
   private isBlocked(x: number, y: number): boolean {
-    // 1. Deve estar rigorosamente dentro do piso da nave
-    if (!this.isInsideShip(x, y)) {
-      return true;
-    }
-
-    // 2. Obstáculos físicos e máquinas
-    const playerHalfWidth = 14;
-    const playerHalfHeight = 16;
-
-    const obstacles = [
-      // Reator Core
-      { left: 95, right: 235, top: 210, bottom: 340 },
-      // Terminal Core
-      { left: 635, right: 775, top: 215, bottom: 290 },
-      // Terminal Setor B
-      { left: 1420, right: 1565, top: 220, bottom: 295 },
-      // Suporte de Vida
-      { left: 1090, right: 1190, top: 285, bottom: 350 },
-      // Emissor de Escudos
-      { left: 1700, right: 1780, top: 270, bottom: 340 },
-      // Baú de Suprimentos
-      { left: 1550, right: 1610, top: 325, bottom: 365 },
-    ];
-
-    return obstacles.some(
-      (obstacle) =>
-        x + playerHalfWidth > obstacle.left &&
-        x - playerHalfWidth < obstacle.right &&
-        y + playerHalfHeight > obstacle.top &&
-        y - playerHalfHeight < obstacle.bottom
-    );
+    return isBlockedByShipGeometry(x, y, this.sectorBUnlocked);
   }
 }
 

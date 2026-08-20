@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ACHIEVEMENTS, Achievement } from "@/components/Achievements";
 import { Log } from "@/components/Terminal";
 import { ALL_CHAPTERS, CHAPTER_1, CHAPTER_2, ChapterStep, getAuraErrorHint } from "@/lib/chapters";
 import { resetCodeSession, runCode } from "@/lib/api";
+import { normalizeChallengeStatus, shouldRegisterCombatDamage } from "@/lib/gameRules";
+import { resolveProgress, stepEffectKey } from "@/lib/gameProgress";
 import { useGameStore } from "@/lib/store";
 import { useNarrativeScheduler } from "./useNarrativeScheduler";
 
@@ -30,35 +32,38 @@ export function useGameEngine() {
     currentStepId,
     unlockedChapters,
     unlockedAchievements,
-    consecutiveSuccesses,
+    codeSessionId,
+    screenShakeEnabled,
+    scanlinesEnabled,
     updateEnergy,
     addItem,
-    setChapter,
-    setStep,
+    setProgress,
     unlockChapter,
-    unlockAchievement: persistAchievement,
     setConsecutiveSuccesses,
+    markStepEffectApplied,
+    rotateCodeSessionId,
+    setScreenShakeEnabled,
+    setScanlinesEnabled,
     resetAll,
     resetChapter,
     _hasHydrated,
   } = store;
 
   const scheduler = useNarrativeScheduler();
-  const sessionIdRef = useRef(crypto.randomUUID());
   const processedStepRef = useRef<string | null>(null);
 
-  const [logs, setLogs] = useState<Log[]>([]);
-  const [currentStep, setCurrentStep] = useState<ChapterStep>(
-    (ALL_CHAPTERS[currentChapterId] ?? CHAPTER_1).steps[currentStepId] ?? CHAPTER_1.steps[CHAPTER_1.initialStepId]
+  const resolvedProgress = useMemo(
+    () => resolveProgress(ALL_CHAPTERS, "chapter-1", currentChapterId, currentStepId),
+    [currentChapterId, currentStepId]
   );
+  const currentStep = resolvedProgress.step;
+
+  const [logs, setLogs] = useState<Log[]>([]);
   const [lives, setLives] = useState(3);
   const [isGameOver, setIsGameOver] = useState(false);
   const [showKatanaCinematic, setShowKatanaCinematic] = useState(false);
   const [auraState, setAuraState] = useState<AuraState>("idle");
   const [isTyping, setIsTyping] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
-  const [gameStarted, setGameStarted] = useState(false);
-  const [isResuming, setIsResuming] = useState(false);
   const [popupAchievement, setPopupAchievement] = useState<Achievement | null>(null);
   const [showAchievementPanel, setShowAchievementPanel] = useState(false);
   const [alertFlash, setAlertFlash] = useState<"red" | "amber" | "cyan" | null>(null);
@@ -67,15 +72,14 @@ export function useGameEngine() {
     setLogs((previous) => [...previous, createLog(content, type)]);
   }, []);
 
-  const unlockAchievement = useCallback(
-    (id: string) => {
-      if (unlockedAchievements.includes(id)) return;
-      persistAchievement(id);
-      const achievement = ACHIEVEMENTS.find((candidate) => candidate.id === id);
-      if (achievement) setPopupAchievement(achievement);
-    },
-    [persistAchievement, unlockedAchievements]
-  );
+  const unlockAchievement = useCallback((id: string) => {
+    const state = useGameStore.getState();
+    if (state.unlockedAchievements.includes(id)) return;
+
+    state.unlockAchievement(id);
+    const achievement = ACHIEVEMENTS.find((candidate) => candidate.id === id);
+    if (achievement) setPopupAchievement(achievement);
+  }, []);
 
   const flash = useCallback((kind: "red" | "amber" | "cyan") => {
     setAlertFlash(kind);
@@ -115,21 +119,32 @@ export function useGameEngine() {
     [scheduler]
   );
 
-  const processStep = useCallback(
-    (step: ChapterStep) => {
-      if (processedStepRef.current === step.id) return;
-      processedStepRef.current = step.id;
-      setCurrentStep(step);
-      setStep(step.id);
+  const applyStepEffect = useCallback(
+    (chapterId: string, step: ChapterStep) => {
+      if (!step.onSuccess) return;
 
-      // Passos puramente narrativos representam consequências já escolhidas no passo anterior.
-      // Seus efeitos precisam ser aplicados ao entrar no passo, antes da progressão automática.
+      const key = stepEffectKey(chapterId, step.id);
+      const state = useGameStore.getState();
+      if (state.appliedStepEffects.includes(key)) return;
+
+      markStepEffectApplied(key);
+      step.onSuccess({ updateEnergy });
+      flash("amber");
+    },
+    [flash, markStepEffectApplied, updateEnergy]
+  );
+
+  const processStep = useCallback(
+    (step: ChapterStep, chapterId: string) => {
+      const processKey = `${chapterId}:${step.id}`;
+      if (processedStepRef.current === processKey) return;
+
+      processedStepRef.current = processKey;
+      setProgress(chapterId, step.id);
+
       if (!step.requiredCode && !step.choices) {
         if (step.achievementId) unlockAchievement(step.achievementId);
-        if (step.onSuccess) {
-          step.onSuccess({ updateEnergy });
-          flash("amber");
-        }
+        applyStepEffect(chapterId, step);
       }
 
       step.narrative.forEach((line, index) => {
@@ -148,12 +163,13 @@ export function useGameEngine() {
       }
 
       const moveAutomatically = () => {
-        if (!step.requiredCode && !step.choices && step.nextStepId) {
+        if (step.autoAdvance && step.nextStepId) {
           scheduler.schedule(() => {
-            const nextStep = CHAPTER_1.steps[step.nextStepId!];
+            const chapter = ALL_CHAPTERS[chapterId] ?? CHAPTER_1;
+            const nextStep = chapter.steps[step.nextStepId!];
             if (nextStep) {
               processedStepRef.current = null;
-              processStep(nextStep);
+              processStep(nextStep, chapterId);
             }
           }, 900);
         }
@@ -168,63 +184,91 @@ export function useGameEngine() {
         moveAutomatically();
       }
     },
-    [addLog, flash, scheduler, setStep, speak, unlockAchievement, updateEnergy]
+    [addLog, applyStepEffect, scheduler, setProgress, speak, unlockAchievement]
   );
 
-  const resetRemoteSession = useCallback(async () => {
-    const oldSessionId = sessionIdRef.current;
-    sessionIdRef.current = crypto.randomUUID();
+  const startChapterSession = useCallback(
+    (chapterId: string, stepId: string, initialLogs: Log[], delay = 500) => {
+      const chapter = ALL_CHAPTERS[chapterId] ?? CHAPTER_1;
+      const step = chapter.steps[stepId] ?? chapter.steps[chapter.initialStepId];
+
+      setProgress(chapterId, step.id);
+      setLives(3);
+      setIsGameOver(false);
+      scheduler.clearAll();
+      processedStepRef.current = null;
+      setAuraState("idle");
+      setLogs(initialLogs);
+      scheduler.schedule(() => processStep(step, chapterId), delay);
+    },
+    [processStep, scheduler, setProgress]
+  );
+
+  const clearRemoteSession = useCallback(async () => {
+    const oldSessionId = useGameStore.getState().codeSessionId;
     try {
       await resetCodeSession(oldSessionId);
     } catch {
-      // A sessão possui TTL no backend; falhar no reset remoto não impede o reset local.
+      // A sessão expira no backend; falhar ao limpá-la não pode bloquear um reset local.
     }
   }, []);
 
-  const startFromBeginning = useCallback(() => {
-    scheduler.clearAll();
-    processedStepRef.current = null;
-    setCurrentStep(CHAPTER_1.steps[CHAPTER_1.initialStepId]);
-    setAuraState("idle");
-    setLogs([
-      createLog("════════════════════════════", "system"),
-      createLog("⟳ SISTEMAS REINICIALIZADOS", "system"),
-      createLog("════════════════════════════", "system"),
-    ]);
-    scheduler.schedule(() => processStep(CHAPTER_1.steps[CHAPTER_1.initialStepId]), 700);
-  }, [processStep, scheduler]);
-
   const handleResetAll = useCallback(async () => {
+    await clearRemoteSession();
     resetAll();
-    await resetRemoteSession();
-    startFromBeginning();
-  }, [resetAll, resetRemoteSession, startFromBeginning]);
+    startChapterSession(
+      "chapter-1",
+      CHAPTER_1.initialStepId,
+      [
+        createLog("════════════════════════════", "system"),
+        createLog("⟳ SISTEMAS REINICIALIZADOS", "system"),
+        createLog("════════════════════════════", "system"),
+      ],
+      700
+    );
+  }, [clearRemoteSession, resetAll, startChapterSession]);
 
   const handleResetChapter = useCallback(async () => {
-    resetChapter();
-    await resetRemoteSession();
-    startFromBeginning();
-  }, [resetChapter, resetRemoteSession, startFromBeginning]);
+    const chapterId = resolvedProgress.chapterId;
+    const chapter = ALL_CHAPTERS[chapterId] ?? CHAPTER_1;
+
+    await clearRemoteSession();
+    resetChapter(chapterId, chapter.initialStepId);
+    startChapterSession(
+      chapterId,
+      chapter.initialStepId,
+      [
+        createLog("════════════════════════════", "system"),
+        createLog(`⟳ ${chapter.title.toUpperCase()} REINICIADO`, "system"),
+        createLog("════════════════════════════", "system"),
+      ],
+      700
+    );
+  }, [clearRemoteSession, resetChapter, resolvedProgress.chapterId, startChapterSession]);
 
   const advanceAfterSuccess = useCallback(
     (nextId?: string) => {
       if (!nextId) return;
-      const chapter = ALL_CHAPTERS[currentChapterId] ?? CHAPTER_1;
+      const chapterId = resolvedProgress.chapterId;
+      const chapter = ALL_CHAPTERS[chapterId] ?? CHAPTER_1;
       const nextStep = chapter.steps[nextId];
       if (!nextStep) return;
 
       processedStepRef.current = null;
-      scheduler.schedule(() => processStep(nextStep), ["step-end", "ch2-end"].includes(nextStep.id) ? 1_500 : 800);
+      scheduler.schedule(
+        () => processStep(nextStep, chapterId),
+        ["step-end", "ch2-end"].includes(nextStep.id) ? 1_500 : 800
+      );
     },
-    [currentChapterId, processStep, scheduler]
+    [processStep, resolvedProgress.chapterId, scheduler]
   );
 
   const registerCombatDamage = useCallback(() => {
-    const isCombat = currentChapterId === "chapter-2" || currentStep.id.startsWith("ch2-");
+    const isCombat = resolvedProgress.chapterId === "chapter-2" || currentStep.id.startsWith("ch2-");
     if (!isCombat) return;
 
-    setLives((prev) => {
-      const nextLives = Math.max(0, prev - 1);
+    setLives((previous) => {
+      const nextLives = Math.max(0, previous - 1);
       if (nextLives <= 0) {
         setIsGameOver(true);
         addLog("💥 [SINAL VITAL PERDIDO]: Kael sofreu dano fatal! Game Over.", "error");
@@ -234,10 +278,12 @@ export function useGameEngine() {
       }
       return nextLives;
     });
-  }, [addLog, currentChapterId, currentStep.id, speak]);
+  }, [addLog, currentStep.id, resolvedProgress.chapterId, speak]);
 
   const handleCommand = useCallback(
     async (cmd: string) => {
+      if (isTyping) return;
+
       if (cmd === "__HELP__") {
         addLog("> help", "info");
         addLog("help · clear · hint · conquistas · código C#", "system");
@@ -268,41 +314,61 @@ export function useGameEngine() {
       try {
         const data = await runCode({
           code: cmd,
-          sessionId: sessionIdRef.current,
+          sessionId: codeSessionId,
           challengeId: currentStep.id,
         });
 
+        const challengeStatus = normalizeChallengeStatus(data);
         data.logs.forEach((line) => addLog(line, data.success ? "system" : "error"));
+
+        const isCombat = resolvedProgress.chapterId === "chapter-2" || currentStep.id.startsWith("ch2-");
 
         if (!data.success) {
           setConsecutiveSuccesses(0);
           setAuraState("error");
           flash("red");
-          registerCombatDamage();
+
+          if (shouldRegisterCombatDamage({
+            isCombat,
+            evaluationSucceeded: false,
+            challengeStatus,
+          })) {
+            registerCombatDamage();
+          }
+
           const hint = getAuraErrorHint(data.logs.join(" "));
           if (hint) scheduler.schedule(() => speak(`💡 ${hint}`), 500);
           if (data.logs.some((line) => line.includes("SEGURANÇA"))) unlockAchievement("hacker");
           return;
         }
 
-        if (!data.challengePassed) {
+        if (challengeStatus === "progress") {
+          flash("cyan");
+          addLog(`↳ ${data.feedback ?? "Etapa intermediária concluída."}`, "system");
+          return;
+        }
+
+        if (challengeStatus === "failed") {
           setConsecutiveSuccesses(0);
           flash("red");
-          registerCombatDamage();
+          if (shouldRegisterCombatDamage({
+            isCombat,
+            evaluationSucceeded: true,
+            challengeStatus,
+          })) {
+            registerCombatDamage();
+          }
           addLog(data.feedback ?? "O código é válido, mas ainda não resolve a tarefa atual.", "warning");
           return;
         }
 
         addLog(`✓ ${data.feedback ?? "Desafio concluído."}`, "success");
-        const newSuccesses = consecutiveSuccesses + 1;
+        const newSuccesses = useGameStore.getState().consecutiveSuccesses + 1;
         setConsecutiveSuccesses(newSuccesses);
         if (newSuccesses >= 3) unlockAchievement("no_errors");
         if (currentStep.achievementId) unlockAchievement(currentStep.achievementId);
 
-        if (currentStep.onSuccess) {
-          currentStep.onSuccess({ updateEnergy });
-          flash("amber");
-        }
+        applyStepEffect(resolvedProgress.chapterId, currentStep);
 
         let nextId = currentStep.nextStepId;
         if (currentStep.choices && data.choiceValue) {
@@ -317,10 +383,8 @@ export function useGameEngine() {
 
         advanceAfterSuccess(nextId);
       } catch (error) {
-        setConsecutiveSuccesses(0);
         setAuraState("error");
-        flash("red");
-        registerCombatDamage();
+        flash("amber");
         addLog(
           `[ERRO DE CONEXÃO]: ${error instanceof Error ? error.message : "API indisponível."}`,
           "error"
@@ -333,15 +397,17 @@ export function useGameEngine() {
     [
       addLog,
       advanceAfterSuccess,
-      consecutiveSuccesses,
+      applyStepEffect,
+      codeSessionId,
       currentStep,
       flash,
+      isTyping,
       registerCombatDamage,
+      resolvedProgress.chapterId,
       scheduler,
       setConsecutiveSuccesses,
       speak,
       unlockAchievement,
-      updateEnergy,
     ]
   );
 
@@ -349,71 +415,42 @@ export function useGameEngine() {
     setLogs([createLog("Terminal limpo.", "system")]);
   }, []);
 
-  useEffect(() => {
-    if (!_hasHydrated) return;
-    const savedStep = CHAPTER_1.steps[currentStepId];
-    setIsResuming(Boolean(savedStep && currentStepId !== CHAPTER_1.initialStepId));
-
-    const timer = scheduler.schedule(() => {
-      setShowSplash(false);
-      setGameStarted(true);
-    }, 1_800);
-
-    return () => clearTimeout(timer);
-  }, [_hasHydrated, currentStepId, scheduler]);
-
-  useEffect(() => {
-    if (!gameStarted || !_hasHydrated) return;
-
-    scheduler.clearAll();
-    if (isResuming && CHAPTER_1.steps[currentStepId]) {
-      addLog("RETOMANDO SISTEMAS DA NAVE...", "system");
-      addLog(`ENERGIA ATUAL: ${energy}%`, "system");
-      processedStepRef.current = null;
-      scheduler.schedule(() => processStep(CHAPTER_1.steps[currentStepId]), 500);
-      return;
-    }
-
-    addLog("INICIANDO SISTEMAS DA NAVE...", "system");
-    processedStepRef.current = null;
-    scheduler.schedule(() => processStep(CHAPTER_1.steps[CHAPTER_1.initialStepId]), 500);
-    // O início depende somente da transição para gameStarted.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameStarted]);
-
   const startNewGame = useCallback(() => {
-    resetChapter();
-    setChapter("chapter-1");
-    setStep("step-1");
-    setLives(3);
-    setIsGameOver(false);
-    scheduler.clearAll();
-    processedStepRef.current = null;
-    setCurrentStep(CHAPTER_1.steps[CHAPTER_1.initialStepId]);
-    setAuraState("idle");
-    setLogs([
-      createLog("════════════════════════════", "system"),
-      createLog("▶ INICIANDO SISTEMAS DA NAVE...", "system"),
-      createLog("════════════════════════════", "system"),
-    ]);
-    scheduler.schedule(() => processStep(CHAPTER_1.steps[CHAPTER_1.initialStepId]), 500);
-  }, [processStep, resetChapter, scheduler, setChapter, setStep]);
+    const oldSessionId = useGameStore.getState().codeSessionId;
+    void resetCodeSession(oldSessionId).catch(() => undefined);
+    resetAll();
+    startChapterSession(
+      "chapter-1",
+      CHAPTER_1.initialStepId,
+      [
+        createLog("════════════════════════════", "system"),
+        createLog("▶ INICIANDO SISTEMAS DA NAVE...", "system"),
+        createLog("════════════════════════════", "system"),
+      ]
+    );
+  }, [resetAll, startChapterSession]);
 
   const resumeSavedGame = useCallback(() => {
-    scheduler.clearAll();
-    processedStepRef.current = null;
-    const chapter = ALL_CHAPTERS[currentChapterId] ?? CHAPTER_1;
-    const step = chapter.steps[currentStepId] ?? chapter.steps[chapter.initialStepId];
-    setCurrentStep(step);
-    setAuraState("idle");
-    setLogs([
-      createLog("════════════════════════════", "system"),
-      createLog("⟳ RETOMANDO SISTEMAS DA NAVE...", "system"),
-      createLog(`ENERGIA ATUAL: ${energy}%`, "system"),
-      createLog("════════════════════════════", "system"),
-    ]);
-    scheduler.schedule(() => processStep(step), 500);
-  }, [currentChapterId, currentStepId, energy, processStep, scheduler]);
+    const state = useGameStore.getState();
+    const resolved = resolveProgress(
+      ALL_CHAPTERS,
+      "chapter-1",
+      state.currentChapterId,
+      state.currentStepId
+    );
+    const chapter = ALL_CHAPTERS[resolved.chapterId] ?? CHAPTER_1;
+
+    startChapterSession(
+      resolved.chapterId,
+      resolved.stepId,
+      [
+        createLog("════════════════════════════", "system"),
+        createLog(`⟳ RETOMANDO ${chapter.title.toUpperCase()}...`, "system"),
+        createLog(`ENERGIA ATUAL: ${state.energy}%`, "system"),
+        createLog("════════════════════════════", "system"),
+      ]
+    );
+  }, [startChapterSession]);
 
   const openChest = useCallback(() => {
     setShowKatanaCinematic(true);
@@ -421,108 +458,110 @@ export function useGameEngine() {
       speak("Você inspeciona a Katana de Plasma Vermelha.");
       return;
     }
+
     addItem("Katana de Plasma Vermelha");
     unlockAchievement("katana_found");
     flash("red");
     addLog("📦 [ITEM OBTIDO]: Katana de Plasma Vermelha equipada com sucesso!", "success");
     speak("Incrível, Kael! Você encontrou a lendária Katana de Plasma Vermelha no baú. Agora temos poder de fogo para entrar no Deck 02!");
 
-    // Se estiver no Capítulo 2 esperando pela Katana, avança para o primeiro duelo
-    if (currentChapterId === "chapter-2" && (currentStepId === "ch2-step-1" || !currentStepId.startsWith("ch2-monster"))) {
-      setStep("ch2-monster-1");
+    if (resolvedProgress.chapterId === "chapter-2" &&
+        (currentStepId === "ch2-step-1" || !currentStepId.startsWith("ch2-monster"))) {
+      setProgress("chapter-2", "ch2-monster-1");
       processedStepRef.current = null;
-      scheduler.schedule(() => processStep(CHAPTER_2.steps["ch2-monster-1"]), 800);
+      scheduler.schedule(() => processStep(CHAPTER_2.steps["ch2-monster-1"], "chapter-2"), 800);
       return;
     }
 
-    // Se estiver na missão de encontrar a Katana no Capítulo 1, finaliza o capítulo 1
     if (currentStepId === "step-find-katana" || currentStepId === "step-5") {
-      setStep("step-end");
+      setProgress("chapter-1", "step-end");
       processedStepRef.current = null;
-      scheduler.schedule(() => processStep(CHAPTER_1.steps["step-end"]), 800);
+      scheduler.schedule(() => processStep(CHAPTER_1.steps["step-end"], "chapter-1"), 800);
     }
-  }, [addItem, addLog, currentChapterId, currentStepId, flash, inventory, processStep, scheduler, setStep, speak, unlockAchievement]);
+  }, [
+    addItem,
+    addLog,
+    currentStepId,
+    flash,
+    inventory,
+    processStep,
+    resolvedProgress.chapterId,
+    scheduler,
+    setProgress,
+    speak,
+    unlockAchievement,
+  ]);
 
   const advanceToChapter2 = useCallback(() => {
-    setChapter("chapter-2");
-    setStep("ch2-step-1");
     unlockChapter("chapter-2");
-    setLives(3);
-    setIsGameOver(false);
-    scheduler.clearAll();
-    processedStepRef.current = null;
-    setCurrentStep(CHAPTER_2.steps["ch2-step-1"]);
-    setAuraState("idle");
-    setLogs([
-      createLog("════════════════════════════════════", "system"),
-      createLog("▶ INGRESSANDO NO DECK 02: QUARENTENA", "system"),
-      createLog("⚔️ SISTEMA DE COMBATE C# ATIVO (3 VIDAS)", "system"),
-      createLog("════════════════════════════════════", "system"),
-    ]);
-    scheduler.schedule(() => processStep(CHAPTER_2.steps["ch2-step-1"]), 600);
+    startChapterSession(
+      "chapter-2",
+      CHAPTER_2.initialStepId,
+      [
+        createLog("════════════════════════════════════", "system"),
+        createLog("▶ INGRESSANDO NO DECK 02: QUARENTENA", "system"),
+        createLog("⚔️ SISTEMA DE COMBATE C# ATIVO (3 VIDAS)", "system"),
+        createLog("════════════════════════════════════", "system"),
+      ],
+      600
+    );
     return true;
-  }, [processStep, scheduler, setChapter, setStep, unlockChapter]);
+  }, [startChapterSession, unlockChapter]);
 
   const selectChapter = useCallback(
     async (chapterId: string) => {
-      await resetRemoteSession();
+      await clearRemoteSession();
+      rotateCodeSessionId();
+
       const chapter = ALL_CHAPTERS[chapterId] ?? CHAPTER_1;
-      setChapter(chapterId);
-      setStep(chapter.initialStepId);
-      setLives(3);
-      setIsGameOver(false);
-      scheduler.clearAll();
-      processedStepRef.current = null;
-      const initialStep = chapter.steps[chapter.initialStepId];
-      setCurrentStep(initialStep);
-      setAuraState("idle");
+      if (chapterId === "chapter-2") unlockChapter("chapter-2");
 
-      if (chapterId === "chapter-2") {
-        unlockChapter("chapter-2");
-        setLogs([
-          createLog("════════════════════════════════════", "system"),
-          createLog("▶ INGRESSANDO NO DECK 02: QUARENTENA", "system"),
-          createLog("⚔️ SISTEMA DE COMBATE C# ATIVO (3 VIDAS)", "system"),
-          createLog("════════════════════════════════════", "system"),
-        ]);
-      } else {
-        setLogs([
-          createLog("════════════════════════════════════", "system"),
-          createLog(`▶ INGRESSANDO EM ${chapter.title.toUpperCase()}`, "system"),
-          createLog("════════════════════════════════════", "system"),
-        ]);
-      }
-
-      scheduler.schedule(() => processStep(initialStep), 500);
+      startChapterSession(
+        chapterId,
+        chapter.initialStepId,
+        chapterId === "chapter-2"
+          ? [
+              createLog("════════════════════════════════════", "system"),
+              createLog("▶ INGRESSANDO NO DECK 02: QUARENTENA", "system"),
+              createLog("⚔️ SISTEMA DE COMBATE C# ATIVO (3 VIDAS)", "system"),
+              createLog("════════════════════════════════════", "system"),
+            ]
+          : [
+              createLog("════════════════════════════════════", "system"),
+              createLog(`▶ INGRESSANDO EM ${chapter.title.toUpperCase()}`, "system"),
+              createLog("════════════════════════════════════", "system"),
+            ]
+      );
     },
-    [processStep, resetRemoteSession, scheduler, setChapter, setStep, unlockChapter]
+    [clearRemoteSession, rotateCodeSessionId, startChapterSession, unlockChapter]
   );
 
   const restartAfterGameOver = useCallback(() => {
-    setIsGameOver(false);
-    setLives(3);
-    resetChapter();
-    setChapter("chapter-1");
-    setStep("step-1");
-    scheduler.clearAll();
-    processedStepRef.current = null;
-    setCurrentStep(CHAPTER_1.steps[CHAPTER_1.initialStepId]);
-    setAuraState("idle");
-    setLogs([
-      createLog("════════════════════════════════════", "system"),
-      createLog("⟳ RESSINCRONIZANDO NO DECK 01: CORE", "system"),
-      createLog("════════════════════════════════════", "system"),
-    ]);
-    scheduler.schedule(() => processStep(CHAPTER_1.steps[CHAPTER_1.initialStepId]), 600);
-  }, [processStep, resetChapter, scheduler, setChapter, setStep]);
+    const chapterId = resolvedProgress.chapterId;
+    const chapter = ALL_CHAPTERS[chapterId] ?? CHAPTER_1;
+    const oldSessionId = useGameStore.getState().codeSessionId;
+    void resetCodeSession(oldSessionId).catch(() => undefined);
+
+    resetChapter(chapterId, chapter.initialStepId);
+    startChapterSession(
+      chapterId,
+      chapter.initialStepId,
+      [
+        createLog("════════════════════════════════════", "system"),
+        createLog(`⟳ RESSINCRONIZANDO EM ${chapter.title.toUpperCase()}`, "system"),
+        createLog("════════════════════════════════════", "system"),
+      ],
+      600
+    );
+  }, [resetChapter, resolvedProgress.chapterId, startChapterSession]);
 
   return {
     energy,
     integrity,
     inventory,
-    currentChapterId,
+    currentChapterId: resolvedProgress.chapterId,
     currentStep,
-    currentStepId,
+    currentStepId: resolvedProgress.stepId,
     unlockedChapters,
     lives,
     isGameOver,
@@ -532,12 +571,14 @@ export function useGameEngine() {
     logs,
     auraState,
     isTyping,
-    showSplash,
-    setShowSplash,
-    isResuming,
     popupAchievement,
     showAchievementPanel,
     alertFlash,
+    screenShakeEnabled,
+    scanlinesEnabled,
+    _hasHydrated,
+    setScreenShakeEnabled,
+    setScanlinesEnabled,
     setPopupAchievement,
     setShowAchievementPanel,
     handleCommand,

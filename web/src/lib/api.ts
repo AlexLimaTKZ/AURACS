@@ -1,9 +1,4 @@
-import {
-  evaluateCSharpCode,
-  getOrCreateSession,
-  resetSession,
-  validateChallenge,
-} from "./evaluator";
+import type { ChallengeStatus } from "./gameRules";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000").replace(/\/$/, "");
 
@@ -12,6 +7,7 @@ export interface RunCodeResponse {
   logs: string[];
   returnValue?: string | null;
   challengePassed: boolean;
+  challengeStatus?: ChallengeStatus;
   feedback?: string | null;
   choiceValue?: number | null;
 }
@@ -22,10 +18,46 @@ async function parseResponse<T>(response: Response): Promise<T> {
       throw new Error("Muitas execuções em pouco tempo. Aguarde alguns segundos e tente novamente.");
     }
 
-    throw new Error(`API respondeu com status ${response.status}.`);
+    if (response.status === 503) {
+      throw new Error("O executor está temporariamente ocupado. Tente novamente em instantes.");
+    }
+
+    let backendMessage = "";
+    try {
+      const body = (await response.json()) as { logs?: string[]; message?: string };
+      backendMessage = body.logs?.[0] ?? body.message ?? "";
+    } catch {
+      // Resposta sem JSON: manter mensagem genérica abaixo.
+    }
+
+    throw new Error(backendMessage || `API respondeu com status ${response.status}.`);
   }
 
   return response.json() as Promise<T>;
+}
+
+async function fetchWithTimeout(
+  path: string,
+  init: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(`${API_URL}${path}`, {
+      ...init,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("O executor C# demorou demais para responder.");
+    }
+
+    throw new Error("Não foi possível conectar ao executor C#. Verifique se a API está disponível.");
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export async function runCode(input: {
@@ -33,61 +65,29 @@ export async function runCode(input: {
   sessionId: string;
   challengeId?: string;
 }): Promise<RunCodeResponse> {
-  // Tentar conectar à API backend
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1800);
-
-    const response = await fetch(`${API_URL}/run`, {
+  const response = await fetchWithTimeout(
+    "/run",
+    {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
-      signal: controller.signal,
-    });
+    },
+    3_000
+  );
 
-    clearTimeout(timeoutId);
-    return await parseResponse<RunCodeResponse>(response);
-  } catch {
-    // Fallback gracioso para o motor de execução local quando o backend C# não estiver rodando
-    const session = getOrCreateSession(input.sessionId, input.challengeId);
-    const evalResult = evaluateCSharpCode(input.code, session);
-
-    if (!evalResult.success) {
-      return {
-        success: false,
-        logs: evalResult.logs,
-        challengePassed: false,
-      };
-    }
-
-    const challenge = validateChallenge(input.challengeId, session, evalResult);
-
-    return {
-      success: true,
-      logs: evalResult.logs,
-      returnValue: evalResult.returnValue,
-      challengePassed: challenge.passed,
-      feedback: challenge.feedback,
-      choiceValue: challenge.choiceValue,
-    };
-  }
+  return parseResponse<RunCodeResponse>(response);
 }
 
 export async function resetCodeSession(sessionId: string): Promise<void> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1200);
-
-    const response = await fetch(`${API_URL}/reset`, {
+  const response = await fetchWithTimeout(
+    "/reset",
+    {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId }),
-      signal: controller.signal,
-    });
+    },
+    2_000
+  );
 
-    clearTimeout(timeoutId);
-    await parseResponse(response);
-  } catch {
-    resetSession(sessionId);
-  }
+  await parseResponse(response);
 }

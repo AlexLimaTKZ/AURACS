@@ -6,7 +6,7 @@
     "dev": "concurrently \"dotnet run --project api\" \"npm run dev --prefix web\"",
     "install:web": "npm install --prefix web",
     "build": "dotnet build AURACS.sln --configuration Release && npm run build --prefix web",
-    "test": "dotnet test api.Tests/api.Tests.csproj --configuration Release",
+    "test": "dotnet test api.Tests/api.Tests.csproj --configuration Release && npm test --prefix web",
     "lint": "npm run lint --prefix web"
   },
   "devDependencies": {

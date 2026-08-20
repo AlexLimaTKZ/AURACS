@@ -14,14 +14,17 @@ Browser
 
 O frontend contém a experiência do jogo e persiste o progresso localmente com Zustand. A API analisa e interpreta somente as construções de C# necessárias às atividades atuais.
 
-No primeiro capítulo são suportados:
+O executor seguro suporta progressivamente o subconjunto de C# usado pelo jogo:
 
-- variáveis `int`;
+- variáveis `int` e `bool`;
 - atribuições simples;
-- literais `int` e `string`;
+- literais `int`, `string` e `bool`;
 - operações aritméticas básicas;
 - concatenação de strings;
-- `Console.WriteLine`.
+- `Console.WriteLine`;
+- comandos de combate explicitamente permitidos no Capítulo 2 (`katana.Cortar()`, `alvo.Vida -= 50` e `katana.GolpeFatal()`).
+
+O frontend não possui um segundo interpretador: o Roslyn/.NET é a fonte única de verdade para validação de código.
 
 A API também possui limite de requisições, limite de tamanho de entrada, expiração de sessões, CORS configurável e endpoint de saúde.
 
@@ -109,6 +112,7 @@ Frontend:
 
 ```bash
 cd web
+npm test
 npm run lint
 npm run build
 ```

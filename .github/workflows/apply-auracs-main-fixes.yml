@@ -28,16 +28,20 @@ jobs:
           git merge-base --is-ancestor "0f578ff0ab0c926ff565688b8aee81e647800bb1" HEAD
           test "$(git diff --name-only 0f578ff0ab0c926ff565688b8aee81e647800bb1..HEAD)" = ".github/workflows/apply-auracs-main-fixes.yml"
 
-      - name: Reconstruct applicator from staging branch
+      - name: Reconstruct and verify applicator
         id: reconstruct
         shell: bash
         run: |
           set -euo pipefail
           exec > >(tee /tmp/reconstruct.log) 2>&1
           git fetch origin automation/auracs-main-fixes
+          : > /tmp/payload.b64
           for i in 00 01 02 03 04 05 06 07; do
-            git show "origin/automation/auracs-main-fixes:.auracs-patch/chunk${i}.txt"
-          done | base64 -d | gzip -d > /tmp/apply.py
+            git show "origin/automation/auracs-main-fixes:.auracs-patch/chunk${i}.txt" >> /tmp/payload.b64
+          done
+          base64 -d /tmp/payload.b64 > /tmp/apply.py.gz
+          gzip -t /tmp/apply.py.gz
+          gzip -dc /tmp/apply.py.gz > /tmp/apply.py
           python -m py_compile /tmp/apply.py
 
       - name: Apply corrections and remove temporary workflow
@@ -136,11 +140,39 @@ jobs:
           exec > >(tee /tmp/publish.log) 2>&1
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add -- \
+            .github/workflows/ci.yml \
+            api/Program.cs \
+            api/SafeCodeEvaluator.cs \
+            api/ChallengeValidator.cs \
+            api.Tests/SafeCodeEvaluatorTests.cs \
+            web/package.json \
+            web/src/lib/api.ts \
+            web/src/lib/store.ts \
+            web/src/lib/gameRules.ts \
+            web/src/lib/gameProgress.ts \
+            web/src/game/worldGeometry.ts \
+            web/src/hooks/useGameEngine.ts \
+            web/src/components/ScreenShake.tsx \
+            web/src/components/GameWorld.tsx \
+            web/tests/gameRules.test.ts \
+            web/tests/progress.test.ts \
+            web/tests/worldGeometry.test.ts \
+            web/src/components/MainMenu.tsx \
+            web/src/app/page.tsx \
+            web/src/game/createShipGame.ts \
+            web/src/lib/chapters.ts \
+            package.json \
+            README.md \
+            web/src/lib/evaluator.ts \
+            web/src/app/api/run/route.ts \
+            web/src/app/api/reset/route.ts \
+            .github/workflows/apply-auracs-main-fixes.yml
           git diff --cached --check
           git diff --cached --stat
           git commit -m "fix: harden evaluator and chapter 2 progression"
           git push origin HEAD:main
+          git push origin --delete automation/auracs-main-fixes || true
 
       - name: Record migration failure on staging branch
         if: failure()
@@ -179,6 +211,6 @@ jobs:
           cd /tmp/auracs-staging
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .auracs-patch/last-run-status.txt
+          git add -- .auracs-patch/last-run-status.txt
           git commit -m "chore: record failed AURACS migration ${GITHUB_RUN_ID}" || true
           git push origin HEAD:automation/auracs-main-fixes

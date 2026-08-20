@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          PAYLOAD_SHA="a141ed72a3ad1f2ed589918c06c22049bdb59bbb"
+          PAYLOAD_SHA="7b36a1336b8edea7146c29ec82cbdd31a2293450"
           git fetch origin automation/auracs-main-fixes
           : > /tmp/payload.b64
           for i in 00 01 02 03 04 05 06 07; do
@@ -39,7 +39,7 @@ jobs:
           base64 -d /tmp/payload.b64 > /tmp/apply.py.gz
           gzip -t /tmp/apply.py.gz
           gzip -dc /tmp/apply.py.gz > /tmp/apply.py
-          echo "24d3304d9f11acc580196645c0176804492d244f2278bb66910a0144db08d6a2  /tmp/apply.py" | sha256sum -c -
+          echo "6fff09e1e2068015732e93213d32bf8ea84e97edecc6618adacc82d0d682652d  /tmp/apply.py" | sha256sum -c -
           python -m py_compile /tmp/apply.py
 
       - name: Apply corrections and remove temporary workflow

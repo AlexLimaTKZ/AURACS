@@ -26,8 +26,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git merge-base --is-ancestor "0f578ff0ab0c926ff565688b8aee81e647800bb1" HEAD
-          test "$(git diff --name-only 0f578ff0ab0c926ff565688b8aee81e647800bb1..HEAD)" = ".github/workflows/apply-auracs-main-fixes.yml"
+          BASE_SHA="0f578ff0ab0c926ff565688b8aee81e647800bb1"
+          git merge-base --is-ancestor "$BASE_SHA" HEAD
+          test "$(git diff --name-only "$BASE_SHA"..HEAD)" = ".github/workflows/apply-auracs-main-fixes.yml"
 
       - name: Reconstruct verified applicator
         id: reconstruct
@@ -35,8 +36,12 @@ jobs:
         run: |
           set -euo pipefail
           exec > >(tee /tmp/reconstruct.log) 2>&1
-          git fetch origin automation/auracs-main-fixes
-          BLOBS=(
+
+          PAYLOAD_SHA="80e57e820ed71f5362f95f04ad3b595b392442f9"
+          git fetch origin automation/auracs-payload-v2
+          git cat-file -e "${PAYLOAD_SHA}^{commit}"
+
+          EXPECTED=(
             7afe7928f973ef830ff32ffa0aa5b3bffe1ea052
             3ae1bb3a0a52c31884522b88ee77ceab867f11d8
             9b933f6391ab557be26ed97723a6196cea666933
@@ -46,13 +51,18 @@ jobs:
             ac6250fa7a991865eecd66a7502450fbc977c675
             56fb747637f25c548894317fbc49c06594065f90
           )
+
           : > /tmp/payload.b64
-          for blob in "${BLOBS[@]}"; do
-            echo "Reading blob ${blob}"
-            test "$(git cat-file -t "$blob")" = "blob"
-            git cat-file blob "$blob" >> /tmp/payload.b64
+          for i in 0 1 2 3 4 5 6 7; do
+            idx=$(printf '%02d' "$i")
+            path=".auracs-patch/chunk${idx}.txt"
+            actual=$(git rev-parse "${PAYLOAD_SHA}:${path}")
+            expected="${EXPECTED[$i]}"
+            echo "${path}: ${actual}"
+            test "$actual" = "$expected"
+            git show "${PAYLOAD_SHA}:${path}" >> /tmp/payload.b64
           done
-          wc -c /tmp/payload.b64
+
           test "$(wc -c < /tmp/payload.b64)" -eq 47556
           echo "ae98ab7c20894aab3451ed707f93908910c2aef57400a1b2128879c470f88b8d  /tmp/payload.b64" | sha256sum -c -
           base64 -d /tmp/payload.b64 > /tmp/apply.py.gz

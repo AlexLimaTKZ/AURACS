@@ -109,18 +109,97 @@ export const CHAPTER_1: Chapter = {
       ],
       auraMessage: "Precisamos calcular se estamos a uma distância segura. Use uma expressão matemática para determinar o valor: 150 vezes 2, menos 50.",
       requiredCode: "int distancia",
+      nextStepId: "step-find-katana"
+    },
+    "step-find-katana": {
+      id: "step-find-katana",
+      narrative: [
+        "Sistemas de propulsão estabilizados e curso corrigido!",
+        "ALERTA: Acesso ao Deck 02 requer autorização de combate.",
+        "MISSÃO: Vá até o Setor B (à direita) e abra o Baú de Suprimentos [ E ] para equipar a Katana de Plasma!"
+      ],
+      auraMessage: "Excelente trabalho com os motores, Kael! Para sobrevivermos ao Deck 02, você precisará de uma arma. Vá até o Setor B à direita e abra o Baú de Suprimentos para pegar a Katana de Plasma!",
       nextStepId: "step-end"
     },
     "step-end": {
       id: "step-end",
       narrative: [
-        "A nave ajusta seu curso. Os motores secundários engajam.",
-        "Por enquanto, vocês estão seguros..."
+        "A Katana de Plasma Vermelha foi sincronizada aos seus circuitos neurais.",
+        "O Deck 01 está completamente estabilizado.",
+        "O acesso ao Deck 02 (Setor de Quarentena) está liberado para combate!"
       ],
-      auraMessage: "Excelente trabalho, Kael. Você salvou a nave por hoje. Mas a jornada está apenas começando. Descanse... e prepare-se para o próximo capítulo.",
+      auraMessage: "Katana de Plasma Vermelha equipada com sucesso! Todos os preparativos para o Deck 02 foram concluídos. Vamos à luta!",
       achievementId: "chapter_1_complete"
     }
   }
+};
+
+export const CHAPTER_2: Chapter = {
+  id: "chapter-2",
+  title: "Setor de Quarentena",
+  initialStepId: "ch2-step-1",
+  steps: {
+    "ch2-step-1": {
+      id: "ch2-step-1",
+      narrative: [
+        "A porta blindada do Deck 02 se tranca e as luzes de emergência piscam em vermelho!",
+        "Um hostil cibernético foi detectado patrulhando o setor.",
+        "Você está desarmado! Vá até o Baú de Suprimentos à sua frente e aperte [ E ] para equipar a Katana de Plasma!"
+      ],
+      auraMessage: "Kael, um hostil cibernético corrompido está à frente! Você precisa de uma arma. Abra o Baú de Suprimentos à sua frente apertando [ E ] para equipar a Katana de Plasma!",
+      nextStepId: "ch2-monster-1",
+    },
+    "ch2-monster-1": {
+      id: "ch2-monster-1",
+      narrative: [
+        "⚔️ DUELO CONTRA O HOSTIL: Aproxime-se do hostil e aperte [ E ] para travar a mira e abrir o terminal!",
+        "Digite exatamente o código C# que flutua na cabeça dele: katana.Cortar();",
+        "CUIDADO: Se errar, o hostil te ataca e você perde vida!"
+      ],
+      auraMessage: "Katana equipada! Aproxime-se do hostil e aperte [ E ] para focar o terminal. Digite 'katana.Cortar();' exatamente como exibido na cabeça dele para desferir o corte!",
+      requiredCode: "katana.Cortar();",
+      achievementId: "first_blood_katana",
+      nextStepId: "ch2-monster-2",
+    },
+    "ch2-monster-2": {
+      id: "ch2-monster-2",
+      narrative: [
+        "⚔️ FASE 2: O hostil enfurece-se e o código muda!",
+        "Aproxime-se do hostil e aperte [ E ].",
+        "Digite o código exibido: alvo.Vida -= 50; para reduzir os pontos vitais do monstro."
+      ],
+      auraMessage: "O hostil tomou dano e o código mudou! Aperte [ E ] no monstro e digite 'alvo.Vida -= 50;' para reduzir a vida dele!",
+      requiredCode: "alvo.Vida -= 50;",
+      achievementId: "operator_master",
+      nextStepId: "ch2-monster-3",
+    },
+    "ch2-monster-3": {
+      id: "ch2-monster-3",
+      narrative: [
+        "⚔️ FASE FINAL: O hostil ativa um escudo de plasma!",
+        "Passo 1: Desative o escudo digitando: bool escudo = false;",
+        "Passo 2: Desfira o golpe fatal final: katana.GolpeFatal();"
+      ],
+      auraMessage: "Ele ativou um escudo de plasma! Aperte [ E ] no monstro, desative o escudo com 'bool escudo = false;' e depois finalize com 'katana.GolpeFatal();'!",
+      requiredCode: "katana.GolpeFatal();",
+      achievementId: "chapter_2_complete",
+      nextStepId: "ch2-end",
+    },
+    "ch2-end": {
+      id: "ch2-end",
+      narrative: [
+        "Com um corte estelar fulminante, o Hostil é pulverizado em partículas de plasma.",
+        "As sirenes do Deck 02 cessam. O Setor de Quarentena foi purificado com sucesso!"
+      ],
+      auraMessage: "Vitória absoluta, Kael! Você empunhou a Katana de Plasma e derrotou o hostil com maestria em C#!",
+      achievementId: "chapter_2_complete",
+    }
+  }
+};
+
+export const ALL_CHAPTERS: Record<string, Chapter> = {
+  "chapter-1": CHAPTER_1,
+  "chapter-2": CHAPTER_2,
 };
 
 interface ErrorHint {

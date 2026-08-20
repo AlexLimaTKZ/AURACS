@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, TerminalSquare } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, TerminalSquare, Package } from "lucide-react";
 
 interface GameWorldProps {
   energy: number;
   stepId: string;
   terminalOpen: boolean;
+  chapterId?: string;
+  inventory?: string[];
   onTerminalInteract: () => void;
+  onOpenChest?: () => void;
 }
 
 type Direction = "up" | "down" | "left" | "right";
@@ -23,15 +26,23 @@ export function GameWorld({
   energy,
   stepId,
   terminalOpen,
+  chapterId = "chapter-1",
+  inventory = [],
   onTerminalInteract,
+  onOpenChest,
 }: GameWorldProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<GameBridge | null>(null);
   const onTerminalInteractRef = useRef(onTerminalInteract);
+  const onOpenChestRef = useRef(onOpenChest);
 
   useEffect(() => {
     onTerminalInteractRef.current = onTerminalInteract;
   }, [onTerminalInteract]);
+
+  useEffect(() => {
+    onOpenChestRef.current = onOpenChest;
+  }, [onOpenChest]);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,7 +57,10 @@ export function GameWorld({
         energy,
         stepId,
         terminalOpen,
+        chapterId,
+        inventory,
         onTerminalInteract: () => onTerminalInteractRef.current(),
+        onOpenChest: () => onOpenChestRef.current?.(),
       });
 
       gameRef.current = game;
@@ -61,15 +75,17 @@ export function GameWorld({
     };
     // A cena é criada uma vez; estado posterior é sincronizado pelo event bus do Phaser.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [chapterId]);
 
   useEffect(() => {
     gameRef.current?.events.emit("auracs:sync", {
       energy,
       stepId,
       terminalOpen,
+      chapterId,
+      inventory,
     });
-  }, [energy, stepId, terminalOpen]);
+  }, [energy, stepId, terminalOpen, chapterId, inventory]);
 
   const setVirtualDirection = (direction: Direction, active: boolean) => {
     gameRef.current?.events.emit("auracs:virtual-input", direction, active);
@@ -119,17 +135,27 @@ export function GameWorld({
         </TouchButton>
       </div>
 
-      <button
-        type="button"
-        onPointerDown={interact}
-        aria-label="Interagir com terminal"
-        className="absolute right-4 bottom-4 flex h-12 w-12 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-950/80 text-cyan-100 shadow-[0_0_30px_rgba(34,211,238,0.18)] backdrop-blur md:hidden"
-      >
-        <TerminalSquare className="h-5 w-5" />
-      </button>
+      <div className="absolute right-4 bottom-4 flex items-center gap-2 md:hidden">
+        <button
+          type="button"
+          onPointerDown={interact}
+          aria-label="Interagir com terminal ou baú"
+          className="flex h-12 w-12 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-950/80 text-cyan-100 shadow-[0_0_30px_rgba(34,211,238,0.18)] backdrop-blur"
+        >
+          <Package className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onPointerDown={() => onTerminalInteractRef.current()}
+          aria-label="Abrir terminal"
+          className="flex h-12 w-12 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-950/80 text-cyan-100 shadow-[0_0_30px_rgba(34,211,238,0.18)] backdrop-blur"
+        >
+          <TerminalSquare className="h-5 w-5" />
+        </button>
+      </div>
 
       <div className="pointer-events-none absolute right-5 bottom-4 hidden rounded-lg border border-white/10 bg-black/45 px-3 py-2 font-mono text-[9px] uppercase tracking-[0.16em] text-white/35 backdrop-blur md:block">
-        WASD / SETAS · E INTERAGIR
+        WASD / SETAS · [ E ] INTERAGIR COM TERMINAL OU BAÚ
       </div>
     </div>
   );

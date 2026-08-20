@@ -7,12 +7,14 @@ export interface GameState {
   inventory: string[];
   currentChapterId: string;
   currentStepId: string;
+  unlockedChapters: string[];
   unlockedAchievements: string[];
   consecutiveSuccesses: number;
   updateEnergy: (amount: number) => void;
   addItem: (item: string) => void;
   setChapter: (chapterId: string) => void;
   setStep: (stepId: string) => void;
+  unlockChapter: (chapterId: string) => void;
   unlockAchievement: (id: string) => void;
   setConsecutiveSuccesses: (n: number) => void;
   resetAll: () => void;
@@ -27,6 +29,7 @@ const INITIAL_STATE = {
   inventory: [] as string[],
   currentChapterId: "chapter-1",
   currentStepId: "step-1",
+  unlockedChapters: ["chapter-1"] as string[],
   unlockedAchievements: [] as string[],
   consecutiveSuccesses: 0,
 };
@@ -49,6 +52,13 @@ export const useGameStore = create<GameState>()(
 
       setChapter: (id) => set({ currentChapterId: id }),
       setStep: (stepId) => set({ currentStepId: stepId }),
+
+      unlockChapter: (id) =>
+        set((state) => ({
+          unlockedChapters: state.unlockedChapters.includes(id)
+            ? state.unlockedChapters
+            : [...state.unlockedChapters, id],
+        })),
 
       unlockAchievement: (id) =>
         set((state) => ({

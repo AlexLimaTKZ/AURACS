@@ -151,6 +151,27 @@ export function Aura({ state = "idle" }: AuraProps) {
           />
         </motion.div>
       )}
+
+      {/* Voice Equalizer Waves */}
+      <div className="absolute bottom-1 flex items-end justify-center gap-0.5">
+        {[8, 14, 20, 12, 6].map((h, index) => (
+          <motion.div
+            key={index}
+            animate={{
+              height: state === "speaking" ? [4, h, 3, h * 0.8, 4] : [2, 3, 2],
+              opacity: state === "speaking" ? 0.9 : 0.25,
+            }}
+            transition={{
+              duration: state === "speaking" ? 0.45 + index * 0.08 : 1.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: index * 0.06,
+            }}
+            className="w-[2.5px] rounded-full"
+            style={{ backgroundColor: primary, boxShadow: `0 0 4px ${primary}` }}
+          />
+        ))}
+      </div>
     </div>
   );
 }

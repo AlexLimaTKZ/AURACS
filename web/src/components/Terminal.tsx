@@ -93,6 +93,7 @@ export function Terminal({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    event.stopPropagation();
     if (event.key === "ArrowUp") {
       event.preventDefault();
       if (historyIndex < commandHistory.length - 1) {

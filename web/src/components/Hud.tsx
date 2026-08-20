@@ -10,9 +10,10 @@ interface HudProps {
   integrity: number;
   inventory: string[];
   chapterId: string;
+  lives?: number;
 }
 
-export function Hud({ energy, integrity, inventory, chapterId }: HudProps) {
+export function Hud({ energy, integrity, inventory, chapterId, lives = 3 }: HudProps) {
   const getEnergyColor = () => {
     if (energy <= 25) return "bg-red-500 shadow-red-500/50";
     if (energy <= 50) return "bg-amber-500 shadow-amber-500/50";
@@ -86,13 +87,31 @@ export function Hud({ energy, integrity, inventory, chapterId }: HudProps) {
       {/* Divider */}
       <div className="w-px h-8 bg-white/[0.08]" />
 
-      {/* Inventory */}
+      {/* Inventory & Katana */}
       <div className="flex items-center gap-2">
         <Package className="w-3.5 h-3.5 text-violet-400/60" />
-        <span className="text-[10px] text-white/40 uppercase tracking-[0.15em] font-mono">
-          {inventory.length} itens
+        <span className="text-[10px] text-white/70 uppercase tracking-[0.15em] font-mono">
+          {inventory.some((i) => i.toLowerCase().includes("katana")) ? "⚔️ Katana de Plasma" : `${inventory.length} itens`}
         </span>
       </div>
+
+      {/* Combat Lives (Chapter 2) */}
+      {chapterId === "chapter-2" && (
+        <>
+          <div className="w-px h-8 bg-white/[0.08]" />
+          <div className="flex items-center gap-1.5 font-mono text-[10px]">
+            <span className="text-red-400/70 text-[9px] uppercase tracking-wider">Vidas:</span>
+            {[1, 2, 3].map((heart) => (
+              <span
+                key={heart}
+                className={`transition ${heart <= lives ? "text-red-400 scale-110 drop-shadow-[0_0_6px_rgba(239,68,68,0.8)]" : "text-white/10 opacity-30"}`}
+              >
+                ❤️
+              </span>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Divider */}
       <div className="w-px h-8 bg-white/[0.08]" />

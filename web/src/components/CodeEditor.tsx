@@ -88,6 +88,7 @@ export function CodeEditor({ value, onChange, onSubmit, disabled }: CodeEditorPr
         insertSpaces
         tabSize={4}
         onKeyDown={(event) => {
+          event.stopPropagation();
           if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
             event.preventDefault();
             onSubmit();

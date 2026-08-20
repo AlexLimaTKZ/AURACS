@@ -62,6 +62,30 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: "Use o comando 'help'",
     icon: "📖",
   },
+  {
+    id: "katana_found",
+    title: "Espadachim Cibernético",
+    description: "Encontre e colete a Katana de Plasma no Deck 01",
+    icon: "🗡️",
+  },
+  {
+    id: "first_blood_katana",
+    title: "Primeiro Corte",
+    description: "Elimine o primeiro monstro com um golpe de Katana",
+    icon: "⚡",
+  },
+  {
+    id: "operator_master",
+    title: "Mestre dos Operadores",
+    description: "Reduza os pontos vitais do parasita usando -= em C#",
+    icon: "🧮",
+  },
+  {
+    id: "chapter_2_complete",
+    title: "Guerreiro do Código",
+    description: "Purifique o Setor de Quarentena e complete o Capítulo 2",
+    icon: "👑",
+  },
 ];
 
 // Popup notification when achievement unlocks

@@ -34,15 +34,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          exec > >(tee /tmp/reconstruct.log) 2>&1
           PAYLOAD_SHA="7b36a1336b8edea7146c29ec82cbdd31a2293450"
+          echo "Fetching staging branch..."
           git fetch origin automation/auracs-main-fixes
+          echo "Checking pinned payload commit..."
+          git cat-file -t "${PAYLOAD_SHA}"
           : > /tmp/payload.b64
           for i in 00 01 02 03 04 05 06 07; do
+            echo "Reading chunk${i}"
+            git cat-file -e "${PAYLOAD_SHA}:.auracs-patch/chunk${i}.txt"
             git show "${PAYLOAD_SHA}:.auracs-patch/chunk${i}.txt" >> /tmp/payload.b64
           done
+          wc -c /tmp/payload.b64
+          echo "Decoding Base64..."
           base64 -d /tmp/payload.b64 > /tmp/apply.py.gz
+          echo "Testing gzip..."
           gzip -t /tmp/apply.py.gz
           gzip -dc /tmp/apply.py.gz > /tmp/apply.py
+          sha256sum /tmp/apply.py
           echo "6fff09e1e2068015732e93213d32bf8ea84e97edecc6618adacc82d0d682652d  /tmp/apply.py" | sha256sum -c -
           python -m py_compile /tmp/apply.py
 
@@ -169,7 +179,7 @@ jobs:
             echo "frontend_lint=${{ steps.frontend_lint.outcome }}"
             echo "frontend_build=${{ steps.frontend_build.outcome }}"
             echo "publish=${{ steps.publish.outcome }}"
-            for log in /tmp/apply-status.log /tmp/backend-restore.log /tmp/backend-build.log /tmp/backend-tests.log /tmp/frontend-install.log /tmp/frontend-audit.log /tmp/frontend-tests.log /tmp/frontend-lint.log /tmp/frontend-build.log /tmp/publish.log; do
+            for log in /tmp/reconstruct.log /tmp/apply-status.log /tmp/backend-restore.log /tmp/backend-build.log /tmp/backend-tests.log /tmp/frontend-install.log /tmp/frontend-audit.log /tmp/frontend-tests.log /tmp/frontend-lint.log /tmp/frontend-build.log /tmp/publish.log; do
               if [ -f "$log" ]; then
                 echo
                 echo "===== $(basename "$log") ====="

@@ -1,15 +1,16 @@
 name: Apply AURACS main fixes
-# payload verified against local SHA-256 before this run
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/apply-auracs-main-fixes.yml
+    branches: [main]
+    paths: [.github/workflows/apply-auracs-main-fixes.yml]
 
 permissions:
   contents: write
+
+concurrency:
+  group: auracs-main-migration
+  cancel-in-progress: true
 
 jobs:
   apply-test-publish:
@@ -21,13 +22,15 @@ jobs:
           fetch-depth: 0
 
       - name: Verify reviewed base
+        id: verify
         shell: bash
         run: |
           set -euo pipefail
           git merge-base --is-ancestor "0f578ff0ab0c926ff565688b8aee81e647800bb1" HEAD
           test "$(git diff --name-only 0f578ff0ab0c926ff565688b8aee81e647800bb1..HEAD)" = ".github/workflows/apply-auracs-main-fixes.yml"
 
-      - name: Reconstruct and verify immutable applicator
+      - name: Reconstruct verified applicator
+        id: reconstruct
         shell: bash
         run: |
           set -euo pipefail
@@ -43,30 +46,45 @@ jobs:
           echo "6fff09e1e2068015732e93213d32bf8ea84e97edecc6618adacc82d0d682652d  /tmp/apply.py" | sha256sum -c -
           python -m py_compile /tmp/apply.py
 
-      - name: Apply corrections and remove temporary workflow
+      - name: Apply corrections
+        id: apply
         shell: bash
         run: |
           set -euo pipefail
           python /tmp/apply.py .
           rm .github/workflows/apply-auracs-main-fixes.yml
-          git status --short
+          git status --short | tee /tmp/apply-status.log
           test -n "$(git status --short)"
 
       - name: Setup .NET
+        id: setup_dotnet
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
       - name: Backend restore
-        run: dotnet restore AURACS.sln
+        id: backend_restore
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet restore AURACS.sln 2>&1 | tee /tmp/backend-restore.log
 
       - name: Backend build
-        run: dotnet build AURACS.sln --configuration Release --no-restore
+        id: backend_build
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet build AURACS.sln --configuration Release --no-restore 2>&1 | tee /tmp/backend-build.log
 
       - name: Backend tests
-        run: dotnet test api.Tests/api.Tests.csproj --configuration Release --no-build
+        id: backend_tests
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test api.Tests/api.Tests.csproj --configuration Release --no-build 2>&1 | tee /tmp/backend-tests.log
 
       - name: Setup Node
+        id: setup_node
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -74,62 +92,97 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Frontend install
+        id: frontend_install
         working-directory: web
-        run: npm ci
+        shell: bash
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee /tmp/frontend-install.log
 
       - name: Frontend audit
+        id: frontend_audit
         working-directory: web
-        run: npm audit --omit=dev --audit-level=high
+        shell: bash
+        run: |
+          set -o pipefail
+          npm audit --omit=dev --audit-level=high 2>&1 | tee /tmp/frontend-audit.log
 
       - name: Frontend tests
+        id: frontend_tests
         working-directory: web
-        run: npm test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee /tmp/frontend-tests.log
 
       - name: Frontend lint
+        id: frontend_lint
         working-directory: web
-        run: npm run lint
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run lint 2>&1 | tee /tmp/frontend-lint.log
 
       - name: Frontend build
+        id: frontend_build
         working-directory: web
+        shell: bash
         env:
           NEXT_PUBLIC_API_URL: http://localhost:5000
-        run: npm run build
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee /tmp/frontend-build.log
 
       - name: Commit and push validated corrections
+        id: publish
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- \
-            .github/workflows/ci.yml \
-            api/Program.cs \
-            api/SafeCodeEvaluator.cs \
-            api/ChallengeValidator.cs \
-            api.Tests/SafeCodeEvaluatorTests.cs \
-            web/package.json \
-            web/src/lib/api.ts \
-            web/src/lib/store.ts \
-            web/src/lib/gameRules.ts \
-            web/src/lib/gameProgress.ts \
-            web/src/game/worldGeometry.ts \
-            web/src/hooks/useGameEngine.ts \
-            web/src/components/ScreenShake.tsx \
-            web/src/components/GameWorld.tsx \
-            web/tests/gameRules.test.ts \
-            web/tests/progress.test.ts \
-            web/tests/worldGeometry.test.ts \
-            web/src/components/MainMenu.tsx \
-            web/src/app/page.tsx \
-            web/src/game/createShipGame.ts \
-            web/src/lib/chapters.ts \
-            package.json \
-            README.md \
-            web/src/lib/evaluator.ts \
-            web/src/app/api/run/route.ts \
-            web/src/app/api/reset/route.ts \
-            .github/workflows/apply-auracs-main-fixes.yml
+          git add -A
           git diff --cached --check
-          git diff --cached --stat
+          git diff --cached --stat | tee /tmp/publish.log
           git commit -m "fix: harden evaluator and chapter 2 progression"
           git push origin HEAD:main
+
+      - name: Record failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATUS=/tmp/last-run-status.txt
+          {
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "head_sha=${GITHUB_SHA}"
+            echo "verify=${{ steps.verify.outcome }}"
+            echo "reconstruct=${{ steps.reconstruct.outcome }}"
+            echo "apply=${{ steps.apply.outcome }}"
+            echo "setup_dotnet=${{ steps.setup_dotnet.outcome }}"
+            echo "backend_restore=${{ steps.backend_restore.outcome }}"
+            echo "backend_build=${{ steps.backend_build.outcome }}"
+            echo "backend_tests=${{ steps.backend_tests.outcome }}"
+            echo "setup_node=${{ steps.setup_node.outcome }}"
+            echo "frontend_install=${{ steps.frontend_install.outcome }}"
+            echo "frontend_audit=${{ steps.frontend_audit.outcome }}"
+            echo "frontend_tests=${{ steps.frontend_tests.outcome }}"
+            echo "frontend_lint=${{ steps.frontend_lint.outcome }}"
+            echo "frontend_build=${{ steps.frontend_build.outcome }}"
+            echo "publish=${{ steps.publish.outcome }}"
+            for log in /tmp/apply-status.log /tmp/backend-restore.log /tmp/backend-build.log /tmp/backend-tests.log /tmp/frontend-install.log /tmp/frontend-audit.log /tmp/frontend-tests.log /tmp/frontend-lint.log /tmp/frontend-build.log /tmp/publish.log; do
+              if [ -f "$log" ]; then
+                echo
+                echo "===== $(basename "$log") ====="
+                tail -n 160 "$log"
+              fi
+            done
+          } > "$STATUS"
+          git fetch origin automation/auracs-main-fixes
+          git worktree add -B automation/auracs-main-fixes /tmp/auracs-staging origin/automation/auracs-main-fixes
+          cp "$STATUS" /tmp/auracs-staging/.auracs-patch/last-run-status.txt
+          cd /tmp/auracs-staging
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .auracs-patch/last-run-status.txt
+          git commit -m "chore: record AURACS migration failure ${GITHUB_RUN_ID}" || true
+          git push origin HEAD:automation/auracs-main-fixes

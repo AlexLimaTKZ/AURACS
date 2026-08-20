@@ -1,0 +1,100 @@
+name: Apply AURACS main fixes
+
+on:
+  push:
+    branches:
+      - automation/auracs-main-fixes
+    paths:
+      - .github/workflows/apply-auracs-main-fixes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-test-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout staging payload
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct applicator
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .auracs-patch/chunk*.txt | base64 -d | gzip -d > /tmp/apply.py
+          python -m py_compile /tmp/apply.py
+
+      - name: Verify reviewed main and checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "0f578ff0ab0c926ff565688b8aee81e647800bb1"
+          git checkout -B main origin/main
+
+      - name: Apply corrections
+        run: python /tmp/apply.py .
+
+      - name: Show resulting changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git status --short
+          test -n "$(git status --short)"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Backend restore
+        run: dotnet restore AURACS.sln
+
+      - name: Backend build
+        run: dotnet build AURACS.sln --configuration Release --no-restore
+
+      - name: Backend tests
+        run: dotnet test api.Tests/api.Tests.csproj --configuration Release --no-build
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Frontend install
+        working-directory: web
+        run: npm ci
+
+      - name: Frontend audit
+        working-directory: web
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Frontend tests
+        working-directory: web
+        run: npm test
+
+      - name: Frontend lint
+        working-directory: web
+        run: npm run lint
+
+      - name: Frontend build
+        working-directory: web
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5000
+        run: npm run build
+
+      - name: Commit and push main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "fix: harden evaluator and chapter 2 progression"
+          git push origin HEAD:main

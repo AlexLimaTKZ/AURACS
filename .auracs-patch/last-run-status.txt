@@ -1,5 +1,5 @@
-run_id=32403576191
-head_sha=463970398c7c9ffee82ec45bad00e71451a1890a
+run_id=32403672257
+head_sha=94b130feab885b71faebd74bab3ebead74ceeaf9
 verify=success
 reconstruct=failure
 apply=skipped
@@ -29,8 +29,3 @@ Reading chunk04
 Reading chunk05
 Reading chunk06
 Reading chunk07
-47660 /tmp/payload.b64
-Decoding Base64...
-Testing gzip...
-
-gzip: /tmp/apply.py.gz: invalid compressed data--format violated

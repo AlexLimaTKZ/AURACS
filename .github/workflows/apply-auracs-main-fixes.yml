@@ -44,15 +44,15 @@ jobs:
           for i in 00 01 02 03 04 05 06 07; do
             echo "Reading chunk${i}"
             git cat-file -e "${PAYLOAD_SHA}:.auracs-patch/chunk${i}.txt"
-            git show "${PAYLOAD_SHA}:.auracs-patch/chunk${i}.txt" >> /tmp/payload.b64
+            git cat-file blob "${PAYLOAD_SHA}:.auracs-patch/chunk${i}.txt" >> /tmp/payload.b64
           done
-          wc -c /tmp/payload.b64
+          test "$(wc -c < /tmp/payload.b64)" -eq 47556
+          echo "ae98ab7c20894aab3451ed707f93908910c2aef57400a1b2128879c470f88b8d  /tmp/payload.b64" | sha256sum -c -
           echo "Decoding Base64..."
           base64 -d /tmp/payload.b64 > /tmp/apply.py.gz
           echo "Testing gzip..."
           gzip -t /tmp/apply.py.gz
           gzip -dc /tmp/apply.py.gz > /tmp/apply.py
-          sha256sum /tmp/apply.py
           echo "6fff09e1e2068015732e93213d32bf8ea84e97edecc6618adacc82d0d682652d  /tmp/apply.py" | sha256sum -c -
           python -m py_compile /tmp/apply.py
 

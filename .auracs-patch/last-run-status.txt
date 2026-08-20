@@ -1,5 +1,5 @@
-run_id=32403452491
-head_sha=7fd392b1b89f3df86677541de872aa5eac8150e5
+run_id=32403576191
+head_sha=463970398c7c9ffee82ec45bad00e71451a1890a
 verify=success
 reconstruct=failure
 apply=skipped
@@ -14,3 +14,23 @@ frontend_tests=skipped
 frontend_lint=skipped
 frontend_build=skipped
 publish=skipped
+
+===== reconstruct.log =====
+Fetching staging branch...
+From https://github.com/AlexLimaTKZ/AURACS
+ * branch            automation/auracs-main-fixes -> FETCH_HEAD
+Checking pinned payload commit...
+commit
+Reading chunk00
+Reading chunk01
+Reading chunk02
+Reading chunk03
+Reading chunk04
+Reading chunk05
+Reading chunk06
+Reading chunk07
+47660 /tmp/payload.b64
+Decoding Base64...
+Testing gzip...
+
+gzip: /tmp/apply.py.gz: invalid compressed data--format violated

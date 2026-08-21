@@ -1,42 +1,104 @@
 # AURACS — Crônicas da Nebulosa
 
-AURACS é um jogo educacional de ficção científica para aprender C# resolvendo problemas dentro de uma nave espacial. O jogador interage com a AURA, escreve código no terminal, recebe feedback imediato, toma decisões e desbloqueia conquistas enquanto avança pela narrativa.
+**AURACS** é um jogo educacional 2D de ficção científica para navegador em que programação C# funciona como uma mecânica do mundo. O jogador controla Kael pela nave Nebulosa, interage com a IA AURA, acessa terminais, resolve falhas da nave e enfrenta ameaças escrevendo código.
+
+> A proposta não é “um quiz que ensina C#”, mas um jogo em que **usar C# muda o mundo**.
+
+## Estado atual
+
+O projeto já possui:
+
+- mundo 2D em **Phaser 4**;
+- Kael com sprite pixel-art, movimentação em quatro direções e animações;
+- câmera, colisões, partículas e interações;
+- Deck 01 com Core, corredor e Setor B;
+- terminais diegéticos ligados ao editor React;
+- inventário e Katana de Plasma Vermelha;
+- **Capítulo 1 — O Despertar**;
+- **Capítulo 2 — Setor de Quarentena**;
+- combate pedagógico com três vidas;
+- AURA, conquistas e progressão persistida localmente;
+- backend ASP.NET Core com sandbox C# seguro baseado no Roslyn;
+- validação semântica dos desafios;
+- testes automatizados e CI.
+
+## Gameplay loop
+
+```text
+explorar
+  ↓
+encontrar um problema
+  ↓
+interagir com terminal / objeto / hostil
+  ↓
+escrever C#
+  ↓
+backend valida semanticamente
+  ↓
+o mundo reage
+  ↓
+nova área, estado ou desafio
+```
 
 ## Arquitetura
 
 ```text
 Browser
-  -> Next.js 16 / React 19
-  -> ASP.NET Core (.NET 8)
-  -> Roslyn Syntax Tree
-  -> SafeCodeEvaluator
+├─ Next.js 16 / React 19
+│  ├─ HUD, terminal, menus e conquistas
+│  ├─ useGameEngine
+│  └─ Zustand persist
+│
+├─ Phaser 4
+│  ├─ mundo 2D
+│  ├─ Kael
+│  ├─ câmera e colisões
+│  ├─ terminais / baú
+│  └─ inimigos e efeitos
+│
+└──────────── HTTP ────────────┐
+                              ▼
+                    ASP.NET Core (.NET 8)
+                              │
+                              ▼
+                     Roslyn Syntax Tree
+                              │
+                              ▼
+                     SafeCodeEvaluator
+                              │
+                              ▼
+                     ChallengeValidator
 ```
 
-O frontend contém a experiência do jogo e persiste o progresso localmente com Zustand. A API analisa e interpreta somente as construções de C# necessárias às atividades atuais.
+O frontend não possui um segundo interpretador de C#. O backend é a fonte de verdade para avaliação e aprovação pedagógica.
 
-O executor seguro suporta progressivamente o subconjunto de C# usado pelo jogo:
+## C# suportado atualmente
+
+O sandbox aceita apenas um subconjunto explicitamente permitido, incluindo:
 
 - variáveis `int` e `bool`;
-- atribuições simples;
 - literais `int`, `string` e `bool`;
-- operações aritméticas básicas;
+- atribuições simples;
+- operadores aritméticos `+ - * / %`;
 - concatenação de strings;
-- `Console.WriteLine`;
-- comandos de combate explicitamente permitidos no Capítulo 2 (`katana.Cortar()`, `alvo.Vida -= 50` e `katana.GolpeFatal()`).
+- `Console.WriteLine(...)` com um argumento;
+- comandos de combate controlados do Capítulo 2:
+  - `katana.Cortar();`
+  - `alvo.Vida -= 50;`
+  - `katana.GolpeFatal();`
 
-O frontend não possui um segundo interpretador: o Roslyn/.NET é a fonte única de verdade para validação de código.
-
-A API também possui limite de requisições, limite de tamanho de entrada, expiração de sessões, CORS configurável e endpoint de saúde.
+O projeto **não executa C# arbitrário**. Construções como `if/else`, loops, arrays, métodos e classes do jogador ainda não fazem parte do subconjunto atual e devem ser adicionadas somente por allowlist, com testes.
 
 ## Stack
 
-### Frontend
+### Jogo / frontend
 
-- Next.js 16
-- React 19
-- TypeScript
+- Next.js 16.3.1
+- React 19.2.3
+- TypeScript 5
+- Phaser 4.2.1
+- Zustand 5
 - Tailwind CSS 4
-- Zustand
 - Framer Motion
 - Howler
 - PrismJS
@@ -51,22 +113,22 @@ A API também possui limite de requisições, limite de tamanho de entrada, expi
 
 ```text
 AURACS/
-├─ App/                    # versão console original
-├─ api/                    # API e avaliador de código
+├─ App/                         # versão console histórica
+├─ api/                         # API e sandbox C#
 │  ├─ Program.cs
 │  ├─ SafeCodeEvaluator.cs
 │  └─ ChallengeValidator.cs
-├─ api.Tests/              # testes automatizados
+├─ api.Tests/                   # testes .NET
 ├─ web/
 │  └─ src/
-│     ├─ app/              # composição da aplicação
-│     ├─ components/       # UI
-│     ├─ hooks/            # motor da narrativa
-│     └─ lib/              # conteúdo, estado e cliente HTTP
+│     ├─ app/                   # composição Next.js
+│     ├─ components/            # UI React
+│     ├─ game/                  # Phaser, sprites e geometria
+│     ├─ hooks/                 # motor do jogo
+│     └─ lib/                   # capítulos, regras, store e API client
+├─ docs/                        # documentação completa
 └─ .github/workflows/ci.yml
 ```
-
-`App/` representa a primeira versão em console e permanece como referência histórica. A experiência principal atual é formada por `web + api`.
 
 ## Executar localmente
 
@@ -85,49 +147,69 @@ cp web/.env.example web/.env.local
 npm run dev
 ```
 
-Serviços locais:
+Serviços:
 
 - frontend: `http://localhost:3000`
 - API: `http://localhost:5000`
 
-## Produção
-
-Configure no frontend:
+Para produção, configure:
 
 ```env
 NEXT_PUBLIC_API_URL=https://sua-api.exemplo.com
 ```
 
-Configure os domínios permitidos da API em `Cors:AllowedOrigins`.
+E defina as origens permitidas em `Cors:AllowedOrigins` no backend.
 
 ## Testes e qualidade
 
-Backend:
-
 ```bash
-dotnet test api.Tests/api.Tests.csproj
-```
-
-Frontend:
-
-```bash
-cd web
 npm test
 npm run lint
 npm run build
 ```
 
-A GitHub Action executa build e testes do backend, além de lint e build do frontend em pull requests para `main`.
+A CI também executa:
 
-## Validação dos desafios
+- restore/build/test do backend;
+- `npm ci`;
+- audit das dependências de produção;
+- testes frontend;
+- ESLint;
+- build de produção do Next.js.
 
-Os desafios são avaliados pelo resultado do código e pelo estado produzido, em vez de depender apenas da comparação textual do comando digitado. Isso permite aceitar soluções equivalentes quando elas realmente atendem ao objetivo pedagógico.
+## Documentação
 
-## Roadmap
+A documentação técnica e de game design está em [`docs/`](./docs/README.md):
 
-- novos capítulos e conceitos de C#;
-- ampliar gradualmente o subconjunto suportado da linguagem;
-- modularizar capítulos;
-- persistência opcional por usuário;
-- testes end-to-end;
-- melhorias de acessibilidade e opções de redução de movimento/áudio.
+- [Visão geral](./docs/01-visao-geral.md)
+- [Arquitetura](./docs/02-arquitetura.md)
+- [Game Design Document](./docs/03-game-design-document.md)
+- [Gameplay loop](./docs/04-gameplay-loop.md)
+- [Phaser / mundo 2D](./docs/05-phaser-engine.md)
+- [Sistema C# / sandbox](./docs/06-sistema-csharp.md)
+- [Capítulos e progressão](./docs/07-capitulos-progresso.md)
+- [Backend e segurança](./docs/08-backend-seguranca.md)
+- [Persistência](./docs/09-persistencia-estado.md)
+- [Testes e qualidade](./docs/10-testes-qualidade.md)
+- [Como contribuir](./docs/11-como-contribuir.md)
+- [Roadmap](./docs/ROADMAP.md)
+
+Veja também [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+
+## Projeto legado
+
+`App/` e `Explicacao_Codigo.md` representam a versão inicial em console e permanecem como referência histórica. A experiência principal atual é `web + api`.
+
+## Princípio central
+
+Ao evoluir o AURACS, preserve esta separação:
+
+```text
+Phaser = mundo
+React = interface
+useGameEngine = progressão
+Zustand = save local
+ASP.NET/Roslyn = C# seguro e validação
+```
+
+Novas funcionalidades pedagógicas só devem ser consideradas concluídas quando existirem no sandbox, no validador, nos testes e no mundo do jogo.
